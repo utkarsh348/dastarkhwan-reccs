@@ -1,0 +1,549 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6efe3;
+  --surface: #fffaf2;
+  --surface-strong: #fff3df;
+  --surface-muted: #f3e6d2;
+  --foreground: #231a12;
+  --muted: #7b6a5a;
+  --border: #e5d4bc;
+  --accent: #a9471b;
+  --accent-strong: #7f3216;
+  --danger: #8f1f1f;
+  --shadow-soft: 0 14px 40px rgba(72, 42, 18, 0.08);
+  --shadow-hover: 0 18px 46px rgba(72, 42, 18, 0.14);
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), "Amiri", "Times New Roman", serif;
+  --font-serif: var(--font-serif), "Fraunces", "Georgia", serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(169, 71, 27, 0.08), transparent 28%),
+    radial-gradient(circle at 88% 0%, rgba(255, 243, 223, 0.9), transparent 32%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-2);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, white);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, white);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #1f6b5c 12%, transparent);
+}
+
+.peacock-feather-mark {
+  display: block;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.nav-links a:hover,
+.nav-quiet:hover {
+  color: var(--accent);
+}
+
+.page-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-3) var(--space-5);
+}
+
+.page-header {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.hero-header h1 {
+  max-width: 760px;
+}
+
+.page-header h1,
+.city-tile h2,
+.rec-card h2,
+.map-panel h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.page-header h1 {
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.page-header p,
+.hero-copy {
+  max-width: 640px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.text-input,
+.text-area {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 12px 14px;
+  outline: none;
+}
+
+.text-area {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.text-input:focus,
+.text-area:focus {
+  border-color: var(--accent);
+}
+
+.ui-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0 18px;
+  font-weight: 600;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 100ms ease;
+  white-space: nowrap;
+}
+
+.ui-button-primary {
+  background: var(--accent);
+  color: #fffaf2;
+  box-shadow: 0 8px 20px rgba(169, 71, 27, 0.22);
+}
+
+.ui-button-primary:hover {
+  background: var(--accent-strong);
+  transform: translateY(-1px);
+}
+
+.ui-button-secondary {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.ui-button-ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.ui-button-disabled {
+  opacity: 0.55;
+}
+
+.city-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.city-tile {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 180px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: linear-gradient(165deg, var(--surface), var(--surface-strong));
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.city-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+.city-tile h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.08;
+}
+
+.city-tile-count,
+.city-tile-meta,
+.rec-card-meta,
+.rec-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rec-masonry {
+  column-count: 2;
+  column-gap: var(--space-3);
+}
+
+.rec-masonry > .rec-card {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: var(--space-3);
+  break-inside: avoid;
+  animation: card-rise 520ms ease both;
+}
+
+.rec-masonry > .rec-card:nth-child(2n) {
+  animation-delay: 80ms;
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rec-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.rec-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+.rec-card-body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.rec-card h2 {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 1.1;
+}
+
+.rec-card--compact {
+  padding: var(--space-2);
+}
+
+.rec-card--compact h2 {
+  font-size: 1.35rem;
+}
+
+.rec-card--compact .rec-card-footer {
+  padding-top: var(--space-1);
+  border-top: none;
+}
+
+.rec-card--story {
+  padding: var(--space-3);
+}
+
+.rec-cuisine {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.chip {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  padding: 5px 12px;
+  font-size: 0.82rem;
+}
+
+.body-copy {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-serif);
+  line-height: 1.65;
+}
+
+.rec-quote {
+  margin: 0;
+  max-width: 52ch;
+  padding: var(--space-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 14px 14px 0;
+  background: var(--surface-muted);
+  color: color-mix(in srgb, var(--foreground) 82%, var(--muted));
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.rec-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.footer-actions a,
+.view-tab.is-active,
+.map-panel-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.view-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  width: fit-content;
+}
+
+.view-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.view-tab.is-active {
+  background: var(--surface-strong);
+}
+
+.form-panel,
+.notice,
+.map-panel,
+.auth-panel {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.form-panel,
+.auth-panel {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 720px;
+  padding: var(--space-3);
+}
+
+.form-panel label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.form-error {
+  color: var(--danger);
+  line-height: 1.6;
+}
+
+.notice {
+  padding: var(--space-2) 18px;
+  color: var(--muted);
+  line-height: 1.7;
+  border-radius: 16px;
+}
+
+.map-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  min-height: 620px;
+}
+
+.map-canvas {
+  display: grid;
+  min-height: 620px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  box-shadow: var(--shadow-soft);
+}
+
+.map-panel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.map-panel h2 {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 1.1;
+}
+
+.section-title {
+  margin: var(--space-4) 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+@media (max-width: 1024px) {
+  .city-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .map-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-nav,
+  .nav-links,
+  .rec-card-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-nav {
+    padding: 18px var(--space-2) var(--space-1);
+  }
+
+  .page-shell {
+    padding: var(--space-2) var(--space-2) var(--space-4);
+  }
+
+  .city-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rec-masonry {
+    column-count: 1;
+  }
+
+  .map-canvas {
+    min-height: 440px;
+  }
+}
