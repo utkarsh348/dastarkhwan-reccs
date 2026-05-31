@@ -1,12 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   extractPlaceIdFromMapsUrl,
   pickBestPlaceResult,
+  resetGeocodeCache,
   resolveLocation,
   scorePlaceMatch,
 } from "./geocode";
 
 describe("resolveLocation", () => {
+  beforeEach(() => {
+    resetGeocodeCache();
+  });
+
   it("marks a single Places match as resolved_from_places", async () => {
     const fetcher = vi.fn(async () =>
       Response.json({
@@ -150,6 +155,27 @@ describe("resolveLocation", () => {
 
     expect(resolved.latitude).toBe(23.02);
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("reuses cached text search results for duplicate queries in one run", async () => {
+    const fetcher = vi.fn(async () =>
+      Response.json({
+        results: [
+          {
+            name: "Ahdoos",
+            formatted_address: "Srinagar",
+            place_id: "place-cache",
+            geometry: { location: { lat: 34.08, lng: 74.79 } },
+          },
+        ],
+        status: "OK",
+      }),
+    );
+
+    await resolveLocation({ restaurant: "Ahdoos", city: "Srinagar" }, { apiKey: "test-key", fetcher });
+    await resolveLocation({ restaurant: "Ahdoos", city: "Srinagar" }, { apiKey: "test-key", fetcher });
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
 

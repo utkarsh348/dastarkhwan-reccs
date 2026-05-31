@@ -3,39 +3,57 @@ import { basename, dirname, join } from "path";
 import { loadEnvConfig } from "@next/env";
 import { parseWhatsAppText, readWhatsAppInput, sortMessagesChronologically } from "../src/lib/importer/whatsapp";
 import { runImportPipeline, PIPELINE_VERSION } from "../src/lib/importer/pipeline";
-import { resolveLocation } from "../src/lib/geocode";
+import { isLockedRecommendation } from "../src/lib/importer/locked-recommendation";
+import { resolveLocation, resetGeocodeCache } from "../src/lib/geocode";
 import {
   isGoogleMapsSkipGeocode,
   logGoogleMapsBudgetSummary,
   resetGoogleMapsRequestCount,
 } from "../src/lib/google-maps-budget";
+import { resetPlaceMetadataCache } from "../src/lib/place-metadata";
 import { getEnv } from "../src/lib/env";
 import type { PipelineResult } from "../src/lib/importer/schemas";
+import type { ExtractedRecommendationCandidate } from "../src/lib/importer/schemas";
 import type { RecommendationInput } from "../src/lib/types";
 
 loadEnvConfig(process.cwd());
 
 export type ImportCliFlags = {
+  geocode: boolean;
   noGeocode: boolean;
   fromPreview: boolean;
   inputPath?: string;
 };
 
 export type ExtractInputOptions = {
+  /** When true (default), skip Text Search / geocode Place Details during extraction. */
   skipGeocode?: boolean;
+  /** When geocoding, only resolve rows that pass isLockedRecommendation. */
+  geocodeLockedOnly?: boolean;
 };
 
 export function parseImportCliArgs(argv: string[]): ImportCliFlags {
+  const geocode = argv.includes("--geocode");
   const noGeocode = argv.includes("--no-geocode");
   const fromPreview = argv.includes("--from-preview");
   const inputPath = argv.find((arg) => !arg.startsWith("--"));
-  return { noGeocode, fromPreview, inputPath };
+  return { geocode, noGeocode, fromPreview, inputPath };
+}
+
+/** Default preview/import extraction skips Maps; opt in with --geocode. */
+export function shouldSkipGeocode(flags: Pick<ImportCliFlags, "geocode" | "noGeocode">): boolean {
+  if (flags.noGeocode) return true;
+  return !flags.geocode;
 }
 
 export function applyImportCliFlags(flags: Pick<ImportCliFlags, "noGeocode">): void {
   resetGoogleMapsRequestCount();
+  resetGeocodeCache();
+  resetPlaceMetadataCache();
   if (flags.noGeocode) {
     process.env.IMPORT_SKIP_GEOCODE = "true";
+  } else {
+    delete process.env.IMPORT_SKIP_GEOCODE;
   }
 }
 
@@ -54,40 +72,35 @@ export async function extractInput(
   const text = existingPipeline ? undefined : await readWhatsAppInput(path);
   const pipeline =
     existingPipeline ?? (await runImportPipeline({ inputPath: path, inputText: text! }));
-  const skipGeocode = options?.skipGeocode ?? isGoogleMapsSkipGeocode();
-  const recommendations = await geocodeCandidates(pipeline.candidates, sourceType, skipGeocode);
+  const skipGeocode = isGoogleMapsSkipGeocode() || (options?.skipGeocode ?? true);
+  const recommendations = await buildRecommendationsFromCandidates(
+    pipeline.candidates,
+    sourceType,
+    {
+      skipGeocode,
+      geocodeLockedOnly: options?.geocodeLockedOnly ?? true,
+    },
+  );
   return buildImportPayload(path, pipeline, recommendations);
 }
 
-async function geocodeCandidates(
-  candidates: PipelineResult["candidates"],
+export async function buildRecommendationsFromCandidates(
+  candidates: ExtractedRecommendationCandidate[],
   sourceType: "whatsapp_zip" | "snippet",
-  skipGeocode: boolean,
+  options: { skipGeocode: boolean; geocodeLockedOnly?: boolean } = {
+    skipGeocode: true,
+    geocodeLockedOnly: true,
+  },
 ): Promise<RecommendationInput[]> {
-  const apiKey = skipGeocode ? null : getEnv("GOOGLE_MAPS_SERVER_KEY");
+  const apiKey =
+    options.skipGeocode || isGoogleMapsSkipGeocode() ? null : getEnv("GOOGLE_MAPS_SERVER_KEY");
+  const geocodeLockedOnly = options.geocodeLockedOnly ?? true;
   const recommendations: RecommendationInput[] = [];
 
   for (const candidate of candidates) {
-    const base: RecommendationInput = {
-      restaurant: candidate.restaurant,
-      city: candidate.city,
-      area: candidate.area,
-      address: candidate.address,
-      dishes: candidate.dishes,
-      tags: candidate.tags,
-      note: candidate.note,
-      snippet: candidate.snippet,
-      sourceName: candidate.sourceName,
-      confidence: candidate.confidence,
-      googleMapsUrl: candidate.googleMapsUrl,
-      sourceHash: candidate.sourceHash,
-      sourceType,
-      sourceDate: candidate.sourceDate,
-      rawRefLabel: candidate.rawRefLabel,
-      createdBy: "importer",
-    };
+    const base = candidateToRecommendationInput(candidate, sourceType);
 
-    if (apiKey) {
+    if (apiKey && (!geocodeLockedOnly || isLockedRecommendation(candidate))) {
       const location = await resolveLocation(base, { apiKey });
       recommendations.push({ ...base, ...location });
     } else {
@@ -96,6 +109,30 @@ async function geocodeCandidates(
   }
 
   return recommendations;
+}
+
+function candidateToRecommendationInput(
+  candidate: ExtractedRecommendationCandidate,
+  sourceType: "whatsapp_zip" | "snippet",
+): RecommendationInput {
+  return {
+    restaurant: candidate.restaurant,
+    city: candidate.city,
+    area: candidate.area,
+    address: candidate.address,
+    dishes: candidate.dishes,
+    tags: candidate.tags,
+    note: candidate.note,
+    snippet: candidate.snippet,
+    sourceName: candidate.sourceName,
+    confidence: candidate.confidence,
+    googleMapsUrl: candidate.googleMapsUrl,
+    sourceHash: candidate.sourceHash,
+    sourceType,
+    sourceDate: candidate.sourceDate,
+    rawRefLabel: candidate.rawRefLabel,
+    createdBy: "importer",
+  };
 }
 
 function buildImportPayload(

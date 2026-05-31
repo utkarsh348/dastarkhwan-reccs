@@ -8,7 +8,11 @@ async function main() {
   const payloads = [];
 
   for (const path of paths) {
-    payloads.push(await extractInput(path, "snippet"));
+    payloads.push(
+      await extractInput(path, "snippet", undefined, {
+        skipGeocode: true,
+      }),
+    );
   }
 
   if (preview) {

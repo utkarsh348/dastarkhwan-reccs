@@ -108,14 +108,47 @@ RLS: public **read** on recommendations; **writes** require authenticated contri
 2. **`src/lib/importer/session-detect.ts`** — scan + Ollama confirm recc-request threads → `ReccSession`
 3. **`src/lib/importer/session-extract.ts`** — one Ollama call per session; multi-venue split in prompt
 4. **`src/lib/importer/pipeline.ts`** — orchestrate detect → extract → dedupe
-5. **`scripts/import-common.ts`** — geocode candidates; `pnpm import:preview`, `pnpm import:report`
-6. **`POST /api/import`** — `importRecommendations()` with `source_hash` merge (preview-first; no auto-import of full chat until validated)
+5. **`scripts/import-common.ts`** — candidates → preview JSON; optional geocode for locked rows; `pnpm import:preview`, `pnpm import:report`
+6. **`POST /api/import`** — `importRecommendations()` with `source_hash` merge; geocode at persist via `createRecommendation` → `enrichWithLocation`
 7. **`src/lib/weak-content.ts`** — strip weak dishes/tags/notes at enrich time
-8. **`src/lib/google-maps-budget.ts`** — per-run request cap for import scripts (`GOOGLE_MAPS_MAX_REQUESTS`, default 500)
+8. **`src/lib/google-maps-budget.ts`** — per-run request cap for import + bulk scripts (`GOOGLE_MAPS_MAX_REQUESTS`, default 500)
+9. **`src/lib/importer/locked-recommendation.ts`** — `isLockedRecommendation()` gates preview/report geocoding
 
 Requires local Ollama (`IMPORT_USE_OLLAMA=true`). Legacy regex extractor: `whatsapp-heuristic.ts` (tests only).
 
-**Google Maps during import:** `resolveLocation` uses Places Text Search (up to 3 queries per row) and sometimes Place Details (geometry). `import:report` adds Place Details (types/reviews) via `fetchPlaceMetadata` — use `--from-preview` to avoid re-running Ollama + re-geocoding. Preview without Maps: `--no-geocode` or `IMPORT_SKIP_GEOCODE=true`. Scripts log `Google Maps API calls used: N / limit` at exit.
+#### Google Maps API budget (collaborators)
+
+Google Cloud free tiers are **per SKU**, not one pooled quota:
+
+| SKU (typical import usage) | Approx. free tier / month |
+|----------------------------|---------------------------|
+| Places Text Search (Pro)   | ~5,000 requests           |
+| Place Details (Essentials) | ~10,000 requests          |
+
+Each unresolved row can cost up to **3 Text Search** calls plus **1 Details** (geometry or metadata). Re-running preview + report + import without caching can burn quota fast.
+
+**Env & flags**
+
+| Control | Effect |
+|---------|--------|
+| `GOOGLE_MAPS_MAX_REQUESTS` | Hard cap per script run (default 500). Shared by import scripts, `resolve:locations`, `enrich:places`. |
+| `IMPORT_GEOCODE_MAX` | Alias for `GOOGLE_MAPS_MAX_REQUESTS`. |
+| `IMPORT_SKIP_GEOCODE=true` | Blocks all Maps calls (same as `--no-geocode`). |
+| `--geocode` | Opt-in geocoding during `import:preview` / `import:report` (locked rows only, budget-capped). |
+| `--no-geocode` | Explicit skip; sets `IMPORT_SKIP_GEOCODE` for the run. |
+| `--from-preview` | `import:report` reads `data/import-preview.json` — no Ollama, no re-text-search for rows that already have `googlePlaceId`. |
+
+**Recommended workflow**
+
+1. `pnpm import:preview "chat.zip"` — Ollama extract only; **no Maps by default**.
+2. Review `data/import-preview.json` (gitignored).
+3. Gap check: `pnpm import:report --from-preview` — Place Details metadata only for rows already geocoded; add `--geocode` to resolve locked rows missing `googlePlaceId`.
+4. Persist: `pnpm import:whatsapp "chat.zip"` — geocodes at import time via `enrichWithLocation` (locked moment).
+5. Optional: `pnpm import:preview "chat.zip" --geocode` if you want place IDs before import (still capped).
+
+**Caching:** `geocode.ts` caches Text Search and Details (geometry) per process run; `place-metadata.ts` caches Details (types/reviews). Never commit API keys; preview/report JSON stays local under `data/`.
+
+**Legacy note:** `resolveLocation` uses Places Text Search (up to 3 queries per row) and sometimes Place Details (geometry). `import:report` adds Place Details (types/reviews) via `fetchPlaceMetadata`. Scripts log `Google Maps API calls used: N / limit` at exit.
 
 ### Location & place metadata
 
@@ -183,8 +216,8 @@ pnpm test
 pnpm lint
 pnpm build
 pnpm db:seed
-pnpm import:preview "path\to\chat.zip"              # optional: --no-geocode
-pnpm import:report "path\to\chat.zip"                 # optional: --from-preview, --no-geocode
+pnpm import:preview "path\to\chat.zip"              # optional: --geocode, --no-geocode
+pnpm import:report "path\to\chat.zip"                 # optional: --from-preview, --geocode, --no-geocode
 pnpm import:whatsapp "path\to\chat.zip"
 pnpm resolve:locations
 pnpm enrich:places

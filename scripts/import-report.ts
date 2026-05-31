@@ -7,6 +7,7 @@ import {
   parseImportCliArgs,
   readImportPreview,
   readWhatsAppInput,
+  shouldSkipGeocode,
 } from "./import-common";
 import { runImportPipeline } from "../src/lib/importer/pipeline";
 import { enrichWithLocation } from "../src/lib/enrich-location";
@@ -50,14 +51,22 @@ async function main() {
 
     const text = await readWhatsAppInput(inputPath);
     pipeline = await runImportPipeline({ inputPath, inputText: text });
-    payload = await extractInput(inputPath, sourceType, pipeline, { skipGeocode: flags.noGeocode });
+    payload = await extractInput(inputPath, sourceType, pipeline, {
+      skipGeocode: shouldSkipGeocode(flags),
+      geocodeLockedOnly: true,
+    });
   }
+
+  const enrichOptions = {
+    skipGeocode: shouldSkipGeocode(flags),
+    geocodeLockedOnly: true,
+  };
 
   const restaurantNames = payload.recommendations.map((row) => row.restaurant.toLowerCase());
   const rows: RowReport[] = [];
 
   for (const row of payload.recommendations) {
-    const enriched = await enrichWithLocation(row);
+    const enriched = await enrichWithLocation(row, enrichOptions);
     const flagsForRow: GapFlag[] = [];
 
     if (!enriched.note?.trim() || isWeakNote(enriched.note, enriched.restaurant)) flagsForRow.push("missingNote");

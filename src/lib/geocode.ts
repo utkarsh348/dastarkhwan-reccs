@@ -36,6 +36,14 @@ type PlaceDetailsResponse = {
 
 const MIN_MATCH_SCORE = 0.42;
 
+const textSearchCache = new Map<string, PlaceResult[]>();
+const placeDetailsCache = new Map<string, ResolvedLocation | null>();
+
+export function resetGeocodeCache(): void {
+  textSearchCache.clear();
+  placeDetailsCache.clear();
+}
+
 export async function resolveLocation(
   input: Pick<RecommendationInput, "restaurant" | "city" | "area" | "address" | "googleMapsUrl">,
   options: ResolveLocationOptions,
@@ -58,6 +66,15 @@ export async function resolveLocation(
 
     const placeId = extractPlaceIdFromMapsUrl(input.googleMapsUrl);
     if (placeId) {
+      const cached = placeDetailsCache.get(placeId);
+      if (cached !== undefined) {
+        return {
+          ...cached,
+          googleMapsUrl: input.googleMapsUrl,
+          address: cached.address ?? input.address ?? null,
+        };
+      }
+
       const fromDetails = await fetchPlaceDetails(placeId, options.apiKey, fetcher);
       if (fromDetails) {
         return {
@@ -138,6 +155,9 @@ function buildSearchQueries(
 }
 
 async function textSearch(query: string, apiKey: string, fetcher: typeof fetch): Promise<PlaceResult[]> {
+  const cached = textSearchCache.get(query);
+  if (cached !== undefined) return cached;
+
   if (!recordGoogleMapsRequest("text_search")) return [];
 
   const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
@@ -145,7 +165,9 @@ async function textSearch(query: string, apiKey: string, fetcher: typeof fetch):
   )}&key=${encodeURIComponent(apiKey)}`;
   const response = await fetcher(url);
   const data = (await response.json()) as PlacesTextSearchResponse;
-  return data.results ?? [];
+  const results = data.results ?? [];
+  textSearchCache.set(query, results);
+  return results;
 }
 
 async function fetchPlaceDetails(
@@ -153,6 +175,9 @@ async function fetchPlaceDetails(
   apiKey: string,
   fetcher: typeof fetch,
 ): Promise<ResolvedLocation | null> {
+  const cached = placeDetailsCache.get(placeId);
+  if (cached !== undefined) return cached;
+
   if (!recordGoogleMapsRequest("place_details_geocode")) return null;
 
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
@@ -161,13 +186,19 @@ async function fetchPlaceDetails(
   const response = await fetcher(url);
   const data = (await response.json()) as PlaceDetailsResponse;
   const result = data.result;
-  if (!result) return null;
+  if (!result) {
+    placeDetailsCache.set(placeId, null);
+    return null;
+  }
 
   const lat = result.geometry?.location?.lat;
   const lng = result.geometry?.location?.lng;
-  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (typeof lat !== "number" || typeof lng !== "number") {
+    placeDetailsCache.set(placeId, null);
+    return null;
+  }
 
-  return {
+  const resolved: ResolvedLocation = {
     latitude: lat,
     longitude: lng,
     googlePlaceId: result.place_id ?? placeId,
@@ -176,6 +207,8 @@ async function fetchPlaceDetails(
     locationConfidence: 0.92,
     address: result.formatted_address ?? null,
   };
+  placeDetailsCache.set(placeId, resolved);
+  return resolved;
 }
 
 function resolveFromResults(

@@ -21,9 +21,9 @@ These were hidden from the header and pages so the experience stays read-only wh
 
 - **WhatsApp import (session LLM pipeline):** requires Ollama running locally (`IMPORT_USE_OLLAMA=true`).
   - `pnpm import:scan "<zip>"` — parse + count recc-request candidates (no LLM)
-  - `pnpm import:preview "<zip>"` — full extract → `data/import-preview.json` + `data/import-sessions.json` (add `--no-geocode` to skip Maps)
-  - `pnpm import:report "<zip>"` — simulated enrich → `data/import-report.json` (prefer `--from-preview` after preview to skip duplicate Ollama/geocode; `--no-geocode` for gap flags without Maps)
-  - `pnpm import:whatsapp "<zip>"` — POST to `/api/import` (only after preview sign-off; does not touch existing rows until you choose)
+  - `pnpm import:preview "<zip>"` — Ollama extract → `data/import-preview.json` + `data/import-sessions.json` (**no Maps by default**; opt in with `--geocode`)
+  - `pnpm import:report "<zip>"` — gap report → `data/import-report.json` (prefer `--from-preview`; `--geocode` for locked rows missing place_id; `--no-geocode` for flags without Maps)
+  - `pnpm import:whatsapp "<zip>"` — POST to `/api/import`; geocodes at persist via `enrichWithLocation`
 - **Sensitive data:** `data/**/*.zip`, `data/**/*.txt`, `data/**/*.sql`, import JSON outputs are gitignored. Seed SQL + snippets removed from GitHub history.
 - **Invite codes:** `pnpm invite:create`, `/join`, `/api/invites/redeem` (contributor gate for writes).
 - **Location resolve:** `pnpm resolve:locations`, `POST /api/locations/resolve`.

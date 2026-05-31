@@ -1,7 +1,12 @@
 import { loadEnvConfig } from "@next/env";
 import { getEnv } from "../src/lib/env";
 import { repairCuisineSummary } from "../src/lib/cuisine-summary";
-import { fetchPlaceMetadata } from "../src/lib/place-metadata";
+import {
+  logGoogleMapsBudgetSummary,
+  resetGoogleMapsRequestCount,
+} from "../src/lib/google-maps-budget";
+import { fetchPlaceMetadata, resetPlaceMetadataCache } from "../src/lib/place-metadata";
+import { resetGeocodeCache } from "../src/lib/geocode";
 import { mapRecommendationRow } from "../src/lib/recommendations";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "../src/lib/supabase/admin";
 import { sanitizeRecommendationContent } from "../src/lib/weak-content";
@@ -9,6 +14,10 @@ import { sanitizeRecommendationContent } from "../src/lib/weak-content";
 loadEnvConfig(process.cwd());
 
 async function main() {
+  resetGoogleMapsRequestCount();
+  resetGeocodeCache();
+  resetPlaceMetadataCache();
+
   const apiKey = getEnv("GOOGLE_MAPS_SERVER_KEY");
   if (!apiKey) throw new Error("GOOGLE_MAPS_SERVER_KEY must be configured.");
   if (!isSupabaseAdminConfigured()) {
@@ -64,6 +73,7 @@ async function main() {
   }
 
   console.log(`Updated ${enriched} recommendations with cuisine summaries.`);
+  logGoogleMapsBudgetSummary();
 }
 
 main().catch((error) => {

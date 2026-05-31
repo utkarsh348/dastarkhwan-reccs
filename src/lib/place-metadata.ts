@@ -75,6 +75,12 @@ const FOOD_KEYWORDS =
 
 const MAX_SUMMARY_LENGTH = 72;
 
+const metadataCache = new Map<string, PlaceMetadata | null>();
+
+export function resetPlaceMetadataCache(): void {
+  metadataCache.clear();
+}
+
 const REJECT_PHRASE =
   /\b(this place|that place|thank you|staff|advocate|so much that|and also|got it pack|suggest b)\b/i;
 
@@ -85,6 +91,9 @@ export async function fetchPlaceMetadata(
   placeId: string,
   options: FetchPlaceMetadataOptions,
 ): Promise<PlaceMetadata | null> {
+  const cached = metadataCache.get(placeId);
+  if (cached !== undefined) return cached;
+
   if (!recordGoogleMapsRequest("place_details_metadata")) return null;
 
   const fetcher = options.fetcher ?? fetch;
@@ -101,9 +110,12 @@ export async function fetchPlaceMetadata(
     status?: string;
   };
 
-  if (!data.result) return null;
+  if (!data.result) {
+    metadataCache.set(placeId, null);
+    return null;
+  }
 
-  return {
+  const metadata: PlaceMetadata = {
     types: data.result.types ?? [],
     editorialOverview: data.result.editorial_summary?.overview?.trim() ?? null,
     reviews: (data.result.reviews ?? [])
@@ -113,6 +125,8 @@ export async function fetchPlaceMetadata(
       }))
       .filter((review) => review.text.length > 0),
   };
+  metadataCache.set(placeId, metadata);
+  return metadata;
 }
 
 export function typesToPlaceLabels(types: string[]): string[] {

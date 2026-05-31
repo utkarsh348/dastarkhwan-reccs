@@ -12,7 +12,9 @@ async function main() {
   if (!token) throw new Error("IMPORT_TOKEN must be configured before importing.");
 
   const sourceType = inputPath.toLowerCase().endsWith(".zip") ? "whatsapp_zip" : "snippet";
-  const payload = await extractInput(inputPath, sourceType);
+  const payload = await extractInput(inputPath, sourceType, undefined, {
+    skipGeocode: true,
+  });
 
   const response = await fetch(`${appUrl}/api/import`, {
     method: "POST",

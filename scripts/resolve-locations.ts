@@ -1,6 +1,12 @@
 import { loadEnvConfig } from "@next/env";
 import { getEnv } from "../src/lib/env";
 import { resolveLocation } from "../src/lib/geocode";
+import { resetGeocodeCache } from "../src/lib/geocode";
+import {
+  logGoogleMapsBudgetSummary,
+  resetGoogleMapsRequestCount,
+} from "../src/lib/google-maps-budget";
+import { resetPlaceMetadataCache } from "../src/lib/place-metadata";
 import {
   getPendingLocationRecommendations,
   mapRecommendationRow,
@@ -11,6 +17,10 @@ import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "../src/lib/su
 loadEnvConfig(process.cwd());
 
 async function main() {
+  resetGoogleMapsRequestCount();
+  resetGeocodeCache();
+  resetPlaceMetadataCache();
+
   const apiKey = getEnv("GOOGLE_MAPS_SERVER_KEY");
   if (!apiKey) throw new Error("GOOGLE_MAPS_SERVER_KEY must be configured.");
   if (!isSupabaseAdminConfigured()) {
@@ -68,6 +78,8 @@ async function main() {
   for (const [citySlug, stats] of [...summary.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     console.log(`  ${citySlug}: ${stats.mapped}/${stats.total} on map`);
   }
+
+  logGoogleMapsBudgetSummary();
 }
 
 main().catch((error) => {

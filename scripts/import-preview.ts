@@ -3,6 +3,7 @@ import {
   extractInput,
   logGoogleMapsBudgetSummary,
   parseImportCliArgs,
+  shouldSkipGeocode,
   writePreview,
   writeSessions,
 } from "./import-common";
@@ -15,7 +16,9 @@ async function main() {
 
   const inputPath = flags.inputPath;
   if (!inputPath) {
-    throw new Error('Usage: pnpm import:preview "<zip-or-text-path>" [--no-geocode]');
+    throw new Error(
+      'Usage: pnpm import:preview "<zip-or-text-path>" [--geocode] [--no-geocode]',
+    );
   }
 
   const sourceType = inputPath.toLowerCase().endsWith(".zip") ? "whatsapp_zip" : "snippet";
@@ -24,7 +27,8 @@ async function main() {
   await writeSessions(pipeline);
 
   const payload = await extractInput(inputPath, sourceType, pipeline, {
-    skipGeocode: flags.noGeocode,
+    skipGeocode: shouldSkipGeocode(flags),
+    geocodeLockedOnly: true,
   });
   await writePreview(payload);
 
