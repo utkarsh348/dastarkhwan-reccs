@@ -19,7 +19,8 @@
     "enrich:places": "tsx scripts/enrich-places.ts",
     "fix:uno-parimal": "tsx scripts/fix-uno-parimal.ts",
     "audit:cuisine": "tsx scripts/audit-cuisine-summaries.ts",
-    "import:report": "tsx scripts/import-report.ts"
+    "import:report": "tsx scripts/import-report.ts",
+    "import:scan": "tsx scripts/import-scan.ts"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

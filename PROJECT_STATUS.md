@@ -19,7 +19,12 @@ These were hidden from the header and pages so the experience stays read-only wh
 
 ## Backend / scripts (not exposed on live UI)
 
-- **WhatsApp import:** `pnpm import:preview`, `pnpm import:whatsapp`, `POST /api/import` (needs `IMPORT_TOKEN` + service role).
+- **WhatsApp import (session LLM pipeline):** requires Ollama running locally (`IMPORT_USE_OLLAMA=true`).
+  - `pnpm import:scan "<zip>"` — parse + count recc-request candidates (no LLM)
+  - `pnpm import:preview "<zip>"` — full extract → `data/import-preview.json` + `data/import-sessions.json`
+  - `pnpm import:report "<zip>"` — preview + simulated enrich → `data/import-report.json` (gap flags)
+  - `pnpm import:whatsapp "<zip>"` — POST to `/api/import` (only after preview sign-off; does not touch existing rows until you choose)
+- **Sensitive data:** `data/**/*.zip`, `data/**/*.txt`, `data/**/*.sql`, import JSON outputs are gitignored. Seed SQL + snippets removed from GitHub history.
 - **Invite codes:** `pnpm invite:create`, `/join`, `/api/invites/redeem` (contributor gate for writes).
 - **Location resolve:** `pnpm resolve:locations`, `POST /api/locations/resolve`.
 - **Place enrich:** `pnpm enrich:places`, `pnpm audit:cuisine` (Google types + review-derived `cuisine_summary` with testimonial gating).
@@ -27,6 +32,7 @@ These were hidden from the header and pages so the experience stays read-only wh
 
 ## Done (recent)
 
+- Session-anchored LLM import pipeline (detect city recc threads → per-session Ollama extract); privacy: seed SQL/snippets purged from git history.
 - Map geocoding hardened; bulk backfill (Ahmedabad 21/22 mapped — **Lolo Roso** still `needs_lookup`).
 - Masonry cards: compact vs story; emotional quotes only on story cards; `cuisine_summary` line (no dish chips on browse).
 - Multi-place WhatsApp split (e.g. UNO Pizza vs Parimal Garden) + `scopeNoteToRestaurant` for quotes.
@@ -38,11 +44,15 @@ These were hidden from the header and pages so the experience stays read-only wh
 
 1. **Re-enable contributor UI** — Sign in, Add recc, invite onboarding copy; confirm Supabase Auth redirect URLs ([`docs/SUPABASE_AUTH_SETUP.md`](docs/SUPABASE_AUTH_SETUP.md)).
 2. **Search** — UI removed; define scope (restaurant vs city vs note) before restoring.
-3. **Import pipeline** — Ollama + deterministic extractors; multi-place gating; run `audit:cuisine` after bulk enrich; weak/generic “Known for” fallbacks.
+3. **Full chat import run** — Start Ollama (`qwen3:4b`), then `pnpm import:preview` + `pnpm import:report` on `data/WhatsApp Chat - Dastarkhwan.zip` (~3760 messages, ~21 request candidates). Review `import-report.json` before any `import:whatsapp` or DB merge. Existing ~26 Supabase rows stay until you sign off.
 4. **Cuisine lines** — Some rows have no `cuisine_summary` after audit (generic Google reviews); optional manual dish tags or editorial pass.
 5. **Map** — Resolve **Lolo Roso**; verify Parimal Garden / food-truck park pins.
 6. **Ops** — Rotate `IMPORT_TOKEN` on Vercel if still default; add `SUPABASE_SERVICE_ROLE_KEY` to Preview env if using preview deployments.
 7. **Assets** — Optional transparent favicon; refine logo crop for circular mark.
+
+### Enrichment gaps (`import:report` flags)
+
+After preview, each row may flag: `missingNote`, `missingPlaceId`, `missingCuisineSummary`, `weakDishesTags`, `noDisplayQuote`, `multiVenueLeakage`. Post-sign-off fixes: tune geocode with LLM `area`/`address`, then `pnpm resolve:locations`, `pnpm enrich:places`, `pnpm audit:cuisine`. No bare-name fallback synthesis until extraction is trusted.
 
 ## Secrets & keys (audit before push)
 
@@ -65,6 +75,9 @@ pnpm dev
 pnpm test
 pnpm lint
 pnpm build
+pnpm import:scan "data/WhatsApp Chat - Dastarkhwan.zip"
+pnpm import:preview "data/WhatsApp Chat - Dastarkhwan.zip"
+pnpm import:report "data/WhatsApp Chat - Dastarkhwan.zip"
 pnpm db:seed
 pnpm resolve:locations
 pnpm enrich:places
