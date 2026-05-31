@@ -1,3 +1,4 @@
+import { recordGoogleMapsRequest } from "./google-maps-budget";
 import { buildGoogleMapsSearchUrl, buildLocationQuery } from "./location";
 import type { LocationStatus, RecommendationInput } from "./types";
 
@@ -137,6 +138,8 @@ function buildSearchQueries(
 }
 
 async function textSearch(query: string, apiKey: string, fetcher: typeof fetch): Promise<PlaceResult[]> {
+  if (!recordGoogleMapsRequest("text_search")) return [];
+
   const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
     query,
   )}&key=${encodeURIComponent(apiKey)}`;
@@ -150,6 +153,8 @@ async function fetchPlaceDetails(
   apiKey: string,
   fetcher: typeof fetch,
 ): Promise<ResolvedLocation | null> {
+  if (!recordGoogleMapsRequest("place_details_geocode")) return null;
+
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
     placeId,
   )}&fields=place_id,name,formatted_address,geometry&key=${encodeURIComponent(apiKey)}`;

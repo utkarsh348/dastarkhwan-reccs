@@ -111,12 +111,15 @@ RLS: public **read** on recommendations; **writes** require authenticated contri
 5. **`scripts/import-common.ts`** — geocode candidates; `pnpm import:preview`, `pnpm import:report`
 6. **`POST /api/import`** — `importRecommendations()` with `source_hash` merge (preview-first; no auto-import of full chat until validated)
 7. **`src/lib/weak-content.ts`** — strip weak dishes/tags/notes at enrich time
+8. **`src/lib/google-maps-budget.ts`** — per-run request cap for import scripts (`GOOGLE_MAPS_MAX_REQUESTS`, default 500)
 
 Requires local Ollama (`IMPORT_USE_OLLAMA=true`). Legacy regex extractor: `whatsapp-heuristic.ts` (tests only).
 
+**Google Maps during import:** `resolveLocation` uses Places Text Search (up to 3 queries per row) and sometimes Place Details (geometry). `import:report` adds Place Details (types/reviews) via `fetchPlaceMetadata` — use `--from-preview` to avoid re-running Ollama + re-geocoding. Preview without Maps: `--no-geocode` or `IMPORT_SKIP_GEOCODE=true`. Scripts log `Google Maps API calls used: N / limit` at exit.
+
 ### Location & place metadata
 
-- **`src/lib/geocode.ts`** — Places text search + details; score by name/city; `query_place_id` URL support
+- **`src/lib/geocode.ts`** — Places text search + details; score by name/city; `query_place_id` URL support; budget via `google-maps-budget.ts`
 - **`src/lib/enrich-location.ts`** — on create/update: resolve + `buildCuisineSummary()`
 - **`src/lib/place-metadata.ts`** — Google types, reviews, editorial → `formatCuisineSummary()`
 - **`src/lib/cuisine-summary.ts`** — **validate** summaries (reject testimonial phrasing, weak generics); `pnpm audit:cuisine` backfills DB
@@ -180,7 +183,8 @@ pnpm test
 pnpm lint
 pnpm build
 pnpm db:seed
-pnpm import:preview "path\to\chat.zip"
+pnpm import:preview "path\to\chat.zip"              # optional: --no-geocode
+pnpm import:report "path\to\chat.zip"                 # optional: --from-preview, --no-geocode
 pnpm import:whatsapp "path\to\chat.zip"
 pnpm resolve:locations
 pnpm enrich:places

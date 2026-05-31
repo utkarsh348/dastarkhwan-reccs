@@ -21,8 +21,8 @@ These were hidden from the header and pages so the experience stays read-only wh
 
 - **WhatsApp import (session LLM pipeline):** requires Ollama running locally (`IMPORT_USE_OLLAMA=true`).
   - `pnpm import:scan "<zip>"` — parse + count recc-request candidates (no LLM)
-  - `pnpm import:preview "<zip>"` — full extract → `data/import-preview.json` + `data/import-sessions.json`
-  - `pnpm import:report "<zip>"` — preview + simulated enrich → `data/import-report.json` (gap flags)
+  - `pnpm import:preview "<zip>"` — full extract → `data/import-preview.json` + `data/import-sessions.json` (add `--no-geocode` to skip Maps)
+  - `pnpm import:report "<zip>"` — simulated enrich → `data/import-report.json` (prefer `--from-preview` after preview to skip duplicate Ollama/geocode; `--no-geocode` for gap flags without Maps)
   - `pnpm import:whatsapp "<zip>"` — POST to `/api/import` (only after preview sign-off; does not touch existing rows until you choose)
 - **Sensitive data:** `data/**/*.zip`, `data/**/*.txt`, `data/**/*.sql`, import JSON outputs are gitignored. Seed SQL + snippets removed from GitHub history.
 - **Invite codes:** `pnpm invite:create`, `/join`, `/api/invites/redeem` (contributor gate for writes).
@@ -44,7 +44,7 @@ These were hidden from the header and pages so the experience stays read-only wh
 
 1. **Re-enable contributor UI** — Sign in, Add recc, invite onboarding copy; confirm Supabase Auth redirect URLs ([`docs/SUPABASE_AUTH_SETUP.md`](docs/SUPABASE_AUTH_SETUP.md)).
 2. **Search** — UI removed; define scope (restaurant vs city vs note) before restoring.
-3. **Full chat import run** — Start Ollama (`qwen3:4b`), then `pnpm import:preview` + `pnpm import:report` on `data/WhatsApp Chat - Dastarkhwan.zip` (~3760 messages, ~21 request candidates). Review `import-report.json` before any `import:whatsapp` or DB merge. Existing ~26 Supabase rows stay until you sign off.
+3. **Full chat import run** — Start Ollama (`qwen3:4b`), then `pnpm import:preview` + `pnpm import:report --from-preview` on `data/WhatsApp Chat - Dastarkhwan.zip` (~3760 messages, ~21 request candidates). Set `GOOGLE_MAPS_MAX_REQUESTS` (default 500/run) to stay within monthly quota (~10k). Review `import-report.json` before any `import:whatsapp` or DB merge. Existing ~26 Supabase rows stay until you sign off.
 4. **Cuisine lines** — Some rows have no `cuisine_summary` after audit (generic Google reviews); optional manual dish tags or editorial pass.
 5. **Map** — Resolve **Lolo Roso**; verify Parimal Garden / food-truck park pins.
 6. **Ops** — Rotate `IMPORT_TOKEN` on Vercel if still default; add `SUPABASE_SERVICE_ROLE_KEY` to Preview env if using preview deployments.

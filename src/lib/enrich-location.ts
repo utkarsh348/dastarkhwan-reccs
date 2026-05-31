@@ -1,15 +1,23 @@
 import { getEnv } from "./env";
 import { resolveLocation } from "./geocode";
 import { buildCuisineSummary } from "./cuisine-summary";
+import { isGoogleMapsSkipGeocode } from "./google-maps-budget";
 import { fetchPlaceMetadata } from "./place-metadata";
 import type { RecommendationInput } from "./types";
 import { sanitizeRecommendationContent } from "./weak-content";
+
+function isLocationAlreadyResolved(input: RecommendationInput): boolean {
+  if (input.locationStatus === "resolved_from_places" || input.locationStatus === "resolved_from_link") {
+    return true;
+  }
+  return Boolean(input.googlePlaceId && input.latitude != null && input.longitude != null);
+}
 
 export async function enrichWithLocation(input: RecommendationInput): Promise<RecommendationInput> {
   const apiKey = getEnv("GOOGLE_MAPS_SERVER_KEY");
   let merged = { ...input };
 
-  if (apiKey) {
+  if (apiKey && !isGoogleMapsSkipGeocode() && !isLocationAlreadyResolved(input)) {
     const location = await resolveLocation(input, { apiKey });
     merged = {
       ...merged,

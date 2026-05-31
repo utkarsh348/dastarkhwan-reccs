@@ -1,3 +1,5 @@
+import { recordGoogleMapsRequest } from "./google-maps-budget";
+
 export type PlaceReview = {
   text: string;
   rating?: number;
@@ -83,6 +85,8 @@ export async function fetchPlaceMetadata(
   placeId: string,
   options: FetchPlaceMetadataOptions,
 ): Promise<PlaceMetadata | null> {
+  if (!recordGoogleMapsRequest("place_details_metadata")) return null;
+
   const fetcher = options.fetcher ?? fetch;
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
     placeId,

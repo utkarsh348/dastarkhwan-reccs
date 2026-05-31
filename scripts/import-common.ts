@@ -4,29 +4,67 @@ import { loadEnvConfig } from "@next/env";
 import { parseWhatsAppText, readWhatsAppInput, sortMessagesChronologically } from "../src/lib/importer/whatsapp";
 import { runImportPipeline, PIPELINE_VERSION } from "../src/lib/importer/pipeline";
 import { resolveLocation } from "../src/lib/geocode";
+import {
+  isGoogleMapsSkipGeocode,
+  logGoogleMapsBudgetSummary,
+  resetGoogleMapsRequestCount,
+} from "../src/lib/google-maps-budget";
 import { getEnv } from "../src/lib/env";
 import type { PipelineResult } from "../src/lib/importer/schemas";
 import type { RecommendationInput } from "../src/lib/types";
 
 loadEnvConfig(process.cwd());
 
+export type ImportCliFlags = {
+  noGeocode: boolean;
+  fromPreview: boolean;
+  inputPath?: string;
+};
+
+export type ExtractInputOptions = {
+  skipGeocode?: boolean;
+};
+
+export function parseImportCliArgs(argv: string[]): ImportCliFlags {
+  const noGeocode = argv.includes("--no-geocode");
+  const fromPreview = argv.includes("--from-preview");
+  const inputPath = argv.find((arg) => !arg.startsWith("--"));
+  return { noGeocode, fromPreview, inputPath };
+}
+
+export function applyImportCliFlags(flags: Pick<ImportCliFlags, "noGeocode">): void {
+  resetGoogleMapsRequestCount();
+  if (flags.noGeocode) {
+    process.env.IMPORT_SKIP_GEOCODE = "true";
+  }
+}
+
+export async function readImportPreview(previewPath = "data/import-preview.json") {
+  const destination = join(process.cwd(), previewPath);
+  const raw = await readFile(destination, "utf8");
+  return JSON.parse(raw) as Awaited<ReturnType<typeof buildImportPayload>>;
+}
+
 export async function extractInput(
   path: string,
   sourceType: "whatsapp_zip" | "snippet",
   existingPipeline?: PipelineResult,
+  options?: ExtractInputOptions,
 ) {
   const text = existingPipeline ? undefined : await readWhatsAppInput(path);
   const pipeline =
     existingPipeline ?? (await runImportPipeline({ inputPath: path, inputText: text! }));
-  const recommendations = await geocodeCandidates(pipeline.candidates, sourceType);
+  const skipGeocode = options?.skipGeocode ?? isGoogleMapsSkipGeocode();
+  const recommendations = await geocodeCandidates(pipeline.candidates, sourceType, skipGeocode);
   return buildImportPayload(path, pipeline, recommendations);
 }
 
 async function geocodeCandidates(
   candidates: PipelineResult["candidates"],
   sourceType: "whatsapp_zip" | "snippet",
+  skipGeocode: boolean,
 ): Promise<RecommendationInput[]> {
-  const apiKey = getEnv("GOOGLE_MAPS_SERVER_KEY");
+  const apiKey = skipGeocode ? null : getEnv("GOOGLE_MAPS_SERVER_KEY");
   const recommendations: RecommendationInput[] = [];
 
   for (const candidate of candidates) {
@@ -117,4 +155,4 @@ export async function readSnippetFiles(paths: string[]) {
   return paths;
 }
 
-export { runImportPipeline, parseWhatsAppText, sortMessagesChronologically, readWhatsAppInput };
+export { runImportPipeline, parseWhatsAppText, sortMessagesChronologically, readWhatsAppInput, logGoogleMapsBudgetSummary };
