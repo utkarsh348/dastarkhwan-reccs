@@ -57,3 +57,4 @@ dev-server*.log
 next-env.d.ts
 
 .vercel
+/data/import-pipeline.log

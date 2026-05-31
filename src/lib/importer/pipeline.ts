@@ -1,4 +1,4 @@
-import { basename } from "path";
+﻿import { basename } from "path";
 import { stableHash } from "../slug";
 import { getEnv } from "../env";
 import { dedupeCandidates } from "./dedupe";
@@ -7,6 +7,7 @@ import { extractAllSessions } from "./session-extract";
 import type { PipelineResult } from "./schemas";
 import type { LlmClientOptions } from "./llm-client";
 import { parseWhatsAppText, readWhatsAppInput, sortMessagesChronologically } from "./whatsapp";
+import { pipelineLog } from "./pipeline-log";
 
 export const PIPELINE_VERSION = "session-v1";
 
@@ -24,10 +25,18 @@ export async function runImportPipeline(options: RunPipelineOptions): Promise<Pi
 
   const text = options.inputText ?? (await readWhatsAppInput(options.inputPath));
   const messages = sortMessagesChronologically(parseWhatsAppText(text));
+  pipelineLog(`Parsed ${messages.length} WhatsApp messages`);
 
   const detect = await detectReccSessions(messages, options);
+  pipelineLog(
+    `Pass A complete: ${detect.candidateCount} candidates → ${detect.sessions.length} sessions (model: ${detect.model})`,
+  );
+
   const extract = await extractAllSessions(detect.sessions, messages, options);
+  pipelineLog(`Pass B complete: ${extract.candidates.length} candidates before dedupe`);
+
   const candidates = dedupeCandidates(extract.candidates);
+  pipelineLog(`Deduped to ${candidates.length} recommendation candidates`);
 
   const models = [detect.model, ...extract.extractions.map((item) => item.model)];
   const uniqueModels = [...new Set(models.filter(Boolean))];

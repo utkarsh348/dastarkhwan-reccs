@@ -1,4 +1,4 @@
-import { extractGoogleMapsUrls } from "../location";
+﻿import { extractGoogleMapsUrls } from "../location";
 import { firstName, slugify, stableHash, titleCase } from "../slug";
 import { chatJson, type LlmClientOptions } from "./llm-client";
 import {
@@ -9,17 +9,18 @@ import {
   type SessionExtractionResult,
 } from "./schemas";
 import type { WhatsAppMessage } from "./whatsapp";
+import { pipelineLog } from "./pipeline-log";
 
 const FEW_SHOT = `
-Example multi-venue message — produce TWO rows:
+Example multi-venue message â€” produce TWO rows:
 "Next to Irani cafe, there is Gandhi Cold Drinks. Love their drinks. It's called Irani Cafe only in the old city. Try maska bun and chai."
-→ Row 1: Irani Cafe, note about maska bun/chai/old city only
-→ Row 2: Gandhi Cold Drinks, note about drinks/heat only
+â†’ Row 1: Irani Cafe, note about maska bun/chai/old city only
+â†’ Row 2: Gandhi Cold Drinks, note about drinks/heat only
 
-Example list message — skip category headings:
+Example list message â€” skip category headings:
 "Good nonveg -\\nMirch Masala (kebabs, SG Road)\\nLolo Roso (prawn dumplings, Bodakdev)"
-→ Row 1: Mirch Masala
-→ Row 2: Lolo Roso
+â†’ Row 1: Mirch Masala
+â†’ Row 2: Lolo Roso
 (Do NOT create a row for "Good nonveg")
 `.trim();
 
@@ -65,7 +66,7 @@ Return JSON:
 
 Rules:
 - One row per distinct restaurant, cafe, bakery, food stall, or food truck.
-- Split multi-venue messages — each venue gets its own scoped note (dishes/context for THAT place only).
+- Split multi-venue messages â€” each venue gets its own scoped note (dishes/context for THAT place only).
 - Do NOT include the original request message as a restaurant.
 - Do NOT include category headings ("Good nonveg", "Best chai") as restaurants.
 - note = factual recommendation scoped to that venue (what to try, area, tips). Not the whole message.
@@ -187,9 +188,18 @@ export async function extractAllSessions(
   const extractions: SessionExtractionResult[] = [];
   const candidates: ExtractedRecommendationCandidate[] = [];
 
-  for (const session of sessions) {
+  const total = sessions.length;
+  for (let index = 0; index < sessions.length; index += 1) {
+    const session = sessions[index]!;
+    const n = index + 1;
+    pipelineLog(
+      `Pass B: extracting session ${n}/${total} (${session.city}, ${session.messageIndices.length} messages)...`,
+    );
     const result = await extractSessionRecommendations(session, messages, options);
     extractions.push(result);
+    pipelineLog(
+      `Pass B: session ${n}/${total} done in ${result.durationMs}ms (${result.recommendations.length} rows${result.error ? `, error: ${result.error}` : ""})`,
+    );
 
     for (const raw of result.recommendations) {
       const candidate = rawToCandidate(raw, session, messages);

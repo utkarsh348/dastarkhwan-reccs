@@ -1,4 +1,4 @@
-import { titleCase } from "../slug";
+﻿import { titleCase } from "../slug";
 import { chatJson, type LlmClientOptions } from "./llm-client";
 import {
   sessionConfirmBatchSchema,
@@ -7,6 +7,7 @@ import {
   type SessionConfirmResult,
 } from "./schemas";
 import type { WhatsAppMessage } from "./whatsapp";
+import { pipelineLog } from "./pipeline-log";
 
 const REQUEST_PATTERN =
   /\b(recc|recco|recommend(?:ation)?s?|food\s+(?:recc|spot|place|joint)|where\s+(?:to\s+)?(?:eat|go)|(?:top|best)\s+food|help\s+with\s+food|suggestions?\s+(?:for|in)|need(?:ed)?\s+(?:your\s+)?(?:top\s+)?(?:food\s+)?recc|looking\s+for\s+(?:food|places|restaurants)|any\s+(?:good\s+)?(?:places|restaurants|cafes?)\s+(?:in|for|around))\b/i;
@@ -75,7 +76,7 @@ Rules:
 - isRequest=true only for explicit asks ("reccos in X", "where to eat in X", "recommendations for X").
 - isRequest=false for intros, sharing one's own experience, replying with a single rec without being prompted, announcements, or off-topic.
 - city = the place they want recommendations FOR (title case). Use area/neighborhood when the ask is hyperlocal (e.g. Koramangala) and city when clear.
-- Do not mark "I recommend X in Y" as a request — that is an answer, not a ask.
+- Do not mark "I recommend X in Y" as a request â€” that is an answer, not a ask.
 
 Candidates:
 ${blocks}`;
@@ -166,7 +167,13 @@ export async function detectReccSessions(
   options: SessionDetectOptions = {},
 ): Promise<{ sessions: ReccSession[]; model: string; candidateCount: number }> {
   const candidates = scanRequestCandidates(messages);
+  pipelineLog(`Session detect: ${candidates.length} request candidates (Pass A scan)`);
+
   const { results, model } = await confirmRequestCandidates(messages, candidates, options);
+  const confirmedRequests = results.filter((item) => item.isRequest && item.city?.trim()).length;
+  pipelineLog(`Session detect: ${confirmedRequests} confirmed requests (LLM)`);
+
   const sessions = buildSessions(messages, results, options);
+  pipelineLog(`Session detect: ${sessions.length} sessions built`);
   return { sessions, model, candidateCount: candidates.length };
 }
