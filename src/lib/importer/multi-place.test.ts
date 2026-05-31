@@ -5,7 +5,9 @@ import {
   multiPlaceInputsFromBody,
   shouldSplitMultiPlace,
 } from "./multi-place";
-import { dedupeCandidates, extractRecommendationCandidates, parseWhatsAppText } from "./whatsapp";
+import { dedupeCandidates } from "./dedupe";
+import { extractRecommendationCandidates } from "./whatsapp-heuristic";
+import { parseWhatsAppText } from "./whatsapp";
 
 const UNO_MESSAGE =
   "Also there is this classic calzone place called UNO Pizza. I loved it when I used to go as a college student. For morning breakfast differnt kinds of poha is a thing. For best experience go early morning to Parimal Garde";

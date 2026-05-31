@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  dedupeCandidates,
-  extractRecommendationCandidates,
-  parseWhatsAppText,
-  sortMessagesChronologically,
-} from "./whatsapp";
+import { dedupeCandidates } from "./dedupe";
+import { extractRecommendationCandidates } from "./whatsapp-heuristic";
+import { parseWhatsAppText, sortMessagesChronologically } from "./whatsapp";
 
 const srinagarCluster = `[09/05/26, 2:47:22 PM] ~ Abhishek Durani: Moon Light - The Walnut Fudge Shop مون لاںٔٹ, New Shopping Complex, 4RGP+RR, Block-A, Auqaf Building, University Main Road, Hazaratbal, Srinagar, Jammu and Kashmir
 [09/05/26, 12:22:27 PM] ~ Abhishek Durani: Don’t miss going to moonlight bakery and try their Walnut fudge 😍 and everything else as well.

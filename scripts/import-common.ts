@@ -1,46 +1,34 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, dirname, join } from "path";
 import { loadEnvConfig } from "@next/env";
-import {
-  dedupeCandidates,
-  extractRecommendationCandidates,
-  parseWhatsAppText,
-  readWhatsAppInput,
-  sortMessagesChronologically,
-} from "../src/lib/importer/whatsapp";
-import { extractRecommendationCandidatesWithOllama } from "../src/lib/importer/ollama";
+import { parseWhatsAppText, readWhatsAppInput, sortMessagesChronologically } from "../src/lib/importer/whatsapp";
+import { runImportPipeline, PIPELINE_VERSION } from "../src/lib/importer/pipeline";
 import { resolveLocation } from "../src/lib/geocode";
 import { getEnv } from "../src/lib/env";
-import { stableHash } from "../src/lib/slug";
+import type { PipelineResult } from "../src/lib/importer/schemas";
 import type { RecommendationInput } from "../src/lib/types";
 
 loadEnvConfig(process.cwd());
 
-export async function extractInput(path: string, sourceType: "whatsapp_zip" | "snippet") {
-  const text = await readWhatsAppInput(path);
-  const messages = sortMessagesChronologically(parseWhatsAppText(text));
-  const heuristicCandidates = extractRecommendationCandidates(messages);
-  let candidates = dedupeCandidates(heuristicCandidates);
-  let model = process.env.OLLAMA_MODEL ?? "qwen3:4b";
+export async function extractInput(
+  path: string,
+  sourceType: "whatsapp_zip" | "snippet",
+  existingPipeline?: PipelineResult,
+) {
+  const text = existingPipeline ? undefined : await readWhatsAppInput(path);
+  const pipeline =
+    existingPipeline ?? (await runImportPipeline({ inputPath: path, inputText: text! }));
+  const recommendations = await geocodeCandidates(pipeline.candidates, sourceType);
+  return buildImportPayload(path, pipeline, recommendations);
+}
 
-  if (getEnv("IMPORT_USE_OLLAMA") !== "false") {
-    try {
-      const ollama = await extractRecommendationCandidatesWithOllama(messages);
-      model = ollama.model;
-      candidates = dedupeCandidates([...heuristicCandidates, ...ollama.candidates]);
-    } catch (error) {
-      model = `${model} (deterministic fallback)`;
-      console.warn(
-        `Ollama extraction unavailable; using deterministic extractor only. ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      );
-    }
-  }
-
+async function geocodeCandidates(
+  candidates: PipelineResult["candidates"],
+  sourceType: "whatsapp_zip" | "snippet",
+): Promise<RecommendationInput[]> {
   const apiKey = getEnv("GOOGLE_MAPS_SERVER_KEY");
-
   const recommendations: RecommendationInput[] = [];
+
   for (const candidate of candidates) {
     const base: RecommendationInput = {
       restaurant: candidate.restaurant,
@@ -69,11 +57,21 @@ export async function extractInput(path: string, sourceType: "whatsapp_zip" | "s
     }
   }
 
+  return recommendations;
+}
+
+function buildImportPayload(
+  path: string,
+  pipeline: PipelineResult,
+  recommendations: RecommendationInput[],
+) {
   return {
     inputName: basename(path),
-    inputHash: stableHash([path, text]),
-    model,
-    parsedMessageCount: messages.length,
+    inputHash: pipeline.inputHash,
+    model: pipeline.model,
+    pipelineVersion: PIPELINE_VERSION,
+    parsedMessageCount: pipeline.parsedMessageCount,
+    sessionCount: pipeline.sessionCount,
     recommendations,
   };
 }
@@ -85,9 +83,38 @@ export async function writePreview(payload: unknown, outputPath = "data/import-p
   console.log(`Wrote ${outputPath}`);
 }
 
-export async function readSnippetFiles(paths: string[]) {
-  if (paths.length) return paths;
-  const defaultPath = join(process.cwd(), "data/snippets/srinagar-2026-05-09.txt");
-  await readFile(defaultPath, "utf8");
-  return [defaultPath];
+export async function writeSessions(payload: PipelineResult, outputPath = "data/import-sessions.json") {
+  const destination = join(process.cwd(), outputPath);
+  await mkdir(dirname(destination), { recursive: true });
+  const debug = {
+    pipelineVersion: payload.pipelineVersion,
+    model: payload.model,
+    parsedMessageCount: payload.parsedMessageCount,
+    sessionCount: payload.sessionCount,
+    sessions: payload.sessions,
+    extractions: payload.extractions.map((item) => ({
+      sessionId: item.sessionId,
+      model: item.model,
+      durationMs: item.durationMs,
+      recommendationCount: item.recommendations.length,
+      error: item.error ?? null,
+      restaurants: item.recommendations.map((row) => row.restaurant),
+    })),
+  };
+  await writeFile(destination, `${JSON.stringify(debug, null, 2)}\n`);
+  console.log(`Wrote ${outputPath}`);
 }
+
+export async function readSnippetFiles(paths: string[]) {
+  if (!paths.length) {
+    throw new Error(
+      "Provide at least one snippet .txt path, e.g. pnpm import:snippet --preview data/snippets/my-snippet.txt",
+    );
+  }
+  for (const path of paths) {
+    await readFile(path, "utf8");
+  }
+  return paths;
+}
+
+export { runImportPipeline, parseWhatsAppText, sortMessagesChronologically, readWhatsAppInput };

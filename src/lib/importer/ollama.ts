@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { extractGoogleMapsUrls } from "../location";
 import { firstName, slugify, stableHash, titleCase } from "../slug";
-import { clusterMessages, type ExtractedRecommendationCandidate, type WhatsAppMessage } from "./whatsapp";
+import { clusterMessages, type WhatsAppMessage } from "./whatsapp";
+import type { ExtractedRecommendationCandidate } from "./schemas";
 
 type OllamaExtractionOptions = {
   endpoint?: string;

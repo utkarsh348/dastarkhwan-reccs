@@ -8,7 +8,9 @@ Design intent:
 
 - **Browse-first** — visitors discover cities and places without signing in.
 - **Voice preserved** — testimonials (`note` / `snippet`) stay separate from factual place lines (`cuisine_summary`, types).
-- **Privacy** — raw WhatsApp zips stay local; only cleaned rows land in Supabase.
+- **Privacy** — raw WhatsApp zips, chat `.txt` snippets, seed SQL, and import preview/report JSON stay **local only** (gitignored under `data/`). Only cleaned rows land in Supabase—not in the repo.
+
+Gitignored local data patterns: `data/**/*.zip`, `data/**/*.txt`, `data/**/*.sql`, `data/import-*.json`, `data/*.preview.json`.
 - **Contributor gate (later)** — magic-link auth + invite codes before add/edit (implemented but hidden in public UI).
 
 **Production:** https://dastarkhwan-reccs.vercel.app  
@@ -100,13 +102,17 @@ RLS: public **read** on recommendations; **writes** require authenticated contri
 
 **`AppNav`:** brand logo only (peacock quill PNG). No Cities / Sign in / Add recc / Search.
 
-### Import pipeline
+### Import pipeline (session-anchored LLM)
 
-1. **`src/lib/importer/whatsapp.ts`** — parse `_chat.txt`, infer city context, list lines, `called X`, multi-place split (`multi-place.ts`)
-2. **`src/lib/importer/ollama.ts`** — optional cluster extraction (env `IMPORT_USE_OLLAMA`, default on)
-3. **`scripts/import-common.ts`** — merge, dedupe, optional geocode per candidate
-4. **`POST /api/import`** — `importRecommendations()` with `source_hash` merge
-5. **`src/lib/weak-content.ts`** — strip weak dishes/tags/notes; do not stuff Google labels into chips
+1. **`src/lib/importer/whatsapp.ts`** — parse `_chat.txt` from zip
+2. **`src/lib/importer/session-detect.ts`** — scan + Ollama confirm recc-request threads → `ReccSession`
+3. **`src/lib/importer/session-extract.ts`** — one Ollama call per session; multi-venue split in prompt
+4. **`src/lib/importer/pipeline.ts`** — orchestrate detect → extract → dedupe
+5. **`scripts/import-common.ts`** — geocode candidates; `pnpm import:preview`, `pnpm import:report`
+6. **`POST /api/import`** — `importRecommendations()` with `source_hash` merge (preview-first; no auto-import of full chat until validated)
+7. **`src/lib/weak-content.ts`** — strip weak dishes/tags/notes at enrich time
+
+Requires local Ollama (`IMPORT_USE_OLLAMA=true`). Legacy regex extractor: `whatsapp-heuristic.ts` (tests only).
 
 ### Location & place metadata
 

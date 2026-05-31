@@ -36,9 +36,17 @@ yarn-error.log*
 mapskey*.txt
 *maps*key*.txt
 
-# local import output
+# local sensitive data (WhatsApp exports, seeds, import outputs)
+/data/**/*.zip
+/data/**/*.txt
+/data/_chat.txt
+/data/**/*.sql
 /data/import-preview.json
+/data/import-sessions.json
+/data/import-report.json
 /data/*.preview.json
+/data/**/*.preview.json
+
 dev-server*.log
 
 # vercel
