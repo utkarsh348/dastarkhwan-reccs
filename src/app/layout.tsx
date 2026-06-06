@@ -25,8 +25,8 @@ export const metadata: Metadata = {
   title: "Dastarkhwan Recommendations",
   description: "Community food recommendations from people who remember the meal.",
   icons: {
-    icon: [{ url: "/brand-peacock-pen.png", type: "image/png" }],
-    apple: [{ url: "/brand-peacock-pen.png", type: "image/png" }],
+    icon: [{ url: "/brand-peacock-icon.png", type: "image/png" }],
+    apple: [{ url: "/brand-peacock-icon.png", type: "image/png" }],
   },
 };
 
