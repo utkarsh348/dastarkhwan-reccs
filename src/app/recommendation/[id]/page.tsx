@@ -3,6 +3,7 @@ import { Button } from "@/components/Button";
 import { RecommendationForm } from "@/components/RecommendationForm";
 import { getSessionUser } from "@/lib/auth";
 import { getDisplayQuote } from "@/lib/display-quote";
+import { formatSourceNames } from "@/lib/display-source";
 import { isContributor } from "@/lib/invites";
 import { safeGetRecommendation } from "@/lib/public-data";
 
@@ -14,6 +15,7 @@ export default async function RecommendationPage({ params }: { params: Promise<{
   const quote = data ? getDisplayQuote(data) : null;
   const note = data?.note ?? data?.snippet ?? null;
   const location = data ? [data.area, data.city].filter(Boolean).join(" / ") : null;
+  const sourceNames = formatSourceNames(data?.sourceName);
 
   return (
     <main className="page-shell" data-testid="recommendation-page">
@@ -48,7 +50,7 @@ export default async function RecommendationPage({ params }: { params: Promise<{
             <aside className="detail-side">
               <p className="eyebrow">From the archive</p>
               <p>
-                {data.sourceName ? `Recommended by ${data.sourceName}.` : "Recommended by the Dastarkhwan community."}
+                {sourceNames ? `Recommended by ${sourceNames}.` : "Recommended by the Dastarkhwan community."}
               </p>
               <Button href={`/city/${data.citySlug}`} variant="secondary">
                 Browse {data.city}

@@ -24,6 +24,10 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "Dastarkhwan Recommendations",
   description: "Community food recommendations from people who remember the meal.",
+  icons: {
+    icon: [{ url: "/brand-peacock-pen.png", type: "image/png" }],
+    apple: [{ url: "/brand-peacock-pen.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

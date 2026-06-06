@@ -22,7 +22,7 @@ const baseRecommendation: Recommendation = {
   cuisineSummary: null,
   note: null,
   snippet: "Curries",
-  sourceName: "Community",
+  sourceName: "Aileen Chatterjee",
   confidence: 0.95,
   createdBy: "test",
   updatedBy: null,
@@ -50,5 +50,18 @@ describe("RecommendationCard", () => {
 
     expect(html).toContain("Indian · Known for thali");
     expect(html).not.toContain("rec-note");
+  });
+
+  it("renders only first names for source attribution", () => {
+    const html = renderToStaticMarkup(
+      <RecommendationCard
+        recommendation={{ ...baseRecommendation, sourceName: "Aileen Chatterjee, Paarug Sethi" }}
+        showEdit={false}
+      />,
+    );
+
+    expect(html).toContain("Recommended by Aileen, Paarug");
+    expect(html).not.toContain("Chatterjee");
+    expect(html).not.toContain("Sethi");
   });
 });

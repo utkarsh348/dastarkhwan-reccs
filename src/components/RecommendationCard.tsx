@@ -1,5 +1,6 @@
 import { Button } from "./Button";
 import { getDisplayQuote } from "@/lib/display-quote";
+import { formatSourceNames } from "@/lib/display-source";
 import type { Recommendation } from "@/lib/types";
 
 export function RecommendationCard({
@@ -12,6 +13,7 @@ export function RecommendationCard({
   const quote = getDisplayQuote(recommendation);
   const variant = quote ? "story" : "compact";
   const location = [recommendation.area, recommendation.city].filter(Boolean).join(" / ");
+  const sourceNames = formatSourceNames(recommendation.sourceName);
 
   return (
     <article
@@ -30,7 +32,7 @@ export function RecommendationCard({
 
       <div className="rec-card-footer">
         <span className="rec-source">
-          {recommendation.sourceName ? `Recommended by ${recommendation.sourceName}` : "Recommended by the community"}
+          {sourceNames ? `Recommended by ${sourceNames}` : "Recommended by the community"}
         </span>
         <div className="footer-actions">
           {recommendation.googleMapsUrl ? (
