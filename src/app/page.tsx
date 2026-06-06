@@ -1,35 +1,32 @@
 import { CityTile } from "@/components/CityTile";
-import { RecommendationCard } from "@/components/RecommendationCard";
 import { safeListRecommendations } from "@/lib/public-data";
 
 export default async function Home() {
-  const { data, error } = await safeListRecommendations({ limit: 12 });
+  const { data, error } = await safeListRecommendations({ limit: 1 });
+  const cities = [...data.cities].sort((left, right) => left.city.localeCompare(right.city));
+
   return (
-    <main className="page-shell" data-testid="home-page">
-      <section className="page-header hero-header">
-        <h1>From Dastarkhwan: tried and tasted</h1>
+    <main className="page-shell home-page-shell" data-testid="home-page">
+      <section className="home-hero">
+        <div className="hero-copy-wrap">
+          <h1 className="detail-title">The Dastarkhwan notebook</h1>
+          <p className="hero-copy">Where we take our loved ones and break bread</p>
+        </div>
       </section>
 
       {error ? <p className="notice">{error}</p> : null}
 
-      <section className="city-grid">
-        {data.cities.map((city) => (
-          <CityTile city={city} key={city.citySlug} />
-        ))}
-      </section>
-
-      {data.recommendations.length ? (
-        <section>
-          <h2 className="section-title">Recent notes</h2>
-          <div className="rec-masonry">
-            {data.recommendations.map((recommendation) => (
-              <RecommendationCard key={recommendation.id} recommendation={recommendation} />
+      <section className="section-block city-section" id="cities">
+        {cities.length ? (
+          <div className="city-grid">
+            {cities.map((city) => (
+              <CityTile city={city} key={city.citySlug} />
             ))}
           </div>
-        </section>
-      ) : (
-        <p className="notice">No recommendations yet. Seed the importer or add the first one manually.</p>
-      )}
+        ) : (
+          <p className="notice">No cities yet.</p>
+        )}
+      </section>
     </main>
   );
 }

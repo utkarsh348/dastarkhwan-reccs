@@ -1,88 +1,141 @@
 # Dastarkhwan Project Status
 
-## Live site
+## Live Site
 
-- **Production:** https://dastarkhwan-reccs.vercel.app
-- **Browse:** public read-only — city tiles, masonry recommendation cards, city list + map views.
-- **Data:** Supabase project `dastarkhwan-reccs` (ap-south-1), ~26 recommendations across Srinagar, Kolkata, Ahmedabad.
+- Production: https://dastarkhwan-reccs.vercel.app
+- Production data remains unchanged during extraction work.
+- Browse UI is public read-only: city tiles, recommendation cards, city list, and map views.
 
-## Intentionally disabled in the public UI (code still exists)
+## Current Extraction Pipeline
 
-These were hidden from the header and pages so the experience stays read-only while flows are refined. Routes and APIs remain for local/admin use.
-
-| Feature | Was in UI | Still in codebase | Re-enable when |
-|--------|-----------|-------------------|----------------|
-| **Sign in / Account** | Nav link → `/login` | Auth, magic link, `/auth/callback`, Supabase SSR | Contributor sign-in is designed and tested; add link back to `AppNav` |
-| **Add recc** | Nav button → `/add` | `/add`, `POST /api/recommendations`, middleware guard | Invite + auth flow is ready; restore nav + polish form |
-| **Search** | Home + city search box (`?q=`) | `listRecommendations({ q })`, API query param | Restore `SearchBox` on home/city pages when search UX is defined |
-| **Cities nav tab** | Nav link → `/` | N/A (redundant with brand logo) | Only if you add other nav items; brand already links home |
-
-## Backend / scripts (not exposed on live UI)
-
-- **WhatsApp import (session LLM pipeline):** requires Ollama running locally (`IMPORT_USE_OLLAMA=true`).
-  - `pnpm import:scan "<zip>"` — parse + count recc-request candidates (no LLM)
-  - `pnpm import:preview "<zip>"` — Ollama extract → `data/import-preview.json` + `data/import-sessions.json` (**no Maps by default**; opt in with `--geocode`)
-  - `pnpm import:report "<zip>"` — gap report → `data/import-report.json` (prefer `--from-preview`; `--geocode` for locked rows missing place_id; `--no-geocode` for flags without Maps)
-  - `pnpm import:whatsapp "<zip>"` — POST to `/api/import`; geocodes at persist via `enrichWithLocation`
-- **Sensitive data:** `data/**/*.zip`, `data/**/*.txt`, `data/**/*.sql`, import JSON outputs are gitignored. Seed SQL + snippets removed from GitHub history.
-- **Invite codes:** `pnpm invite:create`, `/join`, `/api/invites/redeem` (contributor gate for writes).
-- **Location resolve:** `pnpm resolve:locations`, `POST /api/locations/resolve`.
-- **Place enrich:** `pnpm enrich:places`, `pnpm audit:cuisine` (Google types + review-derived `cuisine_summary` with testimonial gating).
-- **Data fixes:** `pnpm fix:uno-parimal` (one-off split example).
-
-## Done (recent)
-
-- Session-anchored LLM import pipeline (detect city recc threads → per-session Ollama extract); privacy: seed SQL/snippets purged from git history.
-- Map geocoding hardened; bulk backfill (Ahmedabad 21/22 mapped — **Lolo Roso** still `needs_lookup`).
-- Masonry cards: compact vs story; emotional quotes only on story cards; `cuisine_summary` line (no dish chips on browse).
-- Multi-place WhatsApp split (e.g. UNO Pizza vs Parimal Garden) + `scopeNoteToRestaurant` for quotes.
-- Cuisine summary audit: blocks review language in “Known for” lines (`pnpm audit:cuisine`).
-- Brand: peacock feather quill PNG; hero copy “From Dastarkhwan: tried and tasted”.
-- Secrets hygiene: removed local `mapskey.txt.txt` from workspace; keys only via `.env.local` / Vercel (see below).
-
-## Needs further development
-
-1. **Re-enable contributor UI** — Sign in, Add recc, invite onboarding copy; confirm Supabase Auth redirect URLs ([`docs/SUPABASE_AUTH_SETUP.md`](docs/SUPABASE_AUTH_SETUP.md)).
-2. **Search** — UI removed; define scope (restaurant vs city vs note) before restoring.
-3. **Full chat import run** — Start Ollama (`qwen3:4b`), then `pnpm import:preview` + `pnpm import:report --from-preview` on `data/WhatsApp Chat - Dastarkhwan.zip` (~3760 messages, ~21 request candidates). Set `GOOGLE_MAPS_MAX_REQUESTS` (default 500/run) to stay within monthly quota (~10k). Review `import-report.json` before any `import:whatsapp` or DB merge. Existing ~26 Supabase rows stay until you sign off.
-4. **Cuisine lines** — Some rows have no `cuisine_summary` after audit (generic Google reviews); optional manual dish tags or editorial pass.
-5. **Map** — Resolve **Lolo Roso**; verify Parimal Garden / food-truck park pins.
-6. **Ops** — Rotate `IMPORT_TOKEN` on Vercel if still default; add `SUPABASE_SERVICE_ROLE_KEY` to Preview env if using preview deployments.
-7. **Assets** — Optional transparent favicon; refine logo crop for circular mark.
-
-### Enrichment gaps (`import:report` flags)
-
-After preview, each row may flag: `missingNote`, `missingPlaceId`, `missingCuisineSummary`, `weakDishesTags`, `noDisplayQuote`, `multiVenueLeakage`. Post-sign-off fixes: tune geocode with LLM `area`/`address`, then `pnpm resolve:locations`, `pnpm enrich:places`, `pnpm audit:cuisine`. No bare-name fallback synthesis until extraction is trusted.
-
-## Secrets & keys (audit before push)
-
-- **No API keys belong in the repo.** Use `.env.local` (gitignored) and Vercel env vars only.
-- **`.env.example`** lists variable names with empty values — safe to commit.
-- **Never commit:** `.env`, `.env*.local`, `mapskey*.txt`, or paste keys into SQL/seed/chat logs.
-- If a Google Maps key was ever stored in a local `mapskey.txt.txt`, **rotate it** in Google Cloud Console and update Vercel + `.env.local`.
-
-Required env vars (see `.env.example`):
-
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (scripts, import, invites, resolve)
-- `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`, `GOOGLE_MAPS_SERVER_KEY`
-- `INVITE_CODE_SALT`, `IMPORT_TOKEN`
-
-## Commands
+The active local pipeline is the WhatsApp-only contextual preview flow.
 
 ```powershell
-pnpm dev
+pnpm extract:preview "data\WhatsApp Chat - Dastarkhwan.zip"
+```
+
+It writes review artifacts only under `data/extraction-runs/<run-id>/`:
+
+- `summary.json`
+- `candidates.json`
+- `review.csv`
+- `rejected.json`
+- `clusters.json`
+
+No Supabase writes, Vercel deploys, or Google Maps calls happen during preview.
+
+### Current Full-Chat Run
+
+Run id: `contextual-full-2026-06-01`
+
+| Metric | Count |
+| --- | ---: |
+| Parsed messages | 3,760 |
+| Broad clusters | 276 |
+| Mini-threads | 582 |
+| Accepted review candidates | 133 |
+| Rejected/parked threads | 570 |
+
+City distribution:
+
+| City | Count |
+| --- | ---: |
+| Bengaluru | 66 |
+| Ahmedabad | 32 |
+| Mumbai | 17 |
+| Unsorted | 8 |
+| Srinagar | 3 |
+| Kolkata | 2 |
+| Chandigarh | 2 |
+| Jaipur | 2 |
+| Mysuru | 1 |
+
+Confidence bands:
+
+| Band | Count |
+| --- | ---: |
+| likely_importable | 5 |
+| review_required | 128 |
+| rejected | 0 accepted rows |
+
+Notes:
+
+- The old random Srinagar concentration is gone.
+- The run is a fuller review set, not final import data.
+- Ollama processed the first checkpointed slice slowly; the remaining run was completed deterministically with checkpoint resume.
+- Deterministic output still contains false positives and dish/category rows that need review before import.
+
+## Pipeline Architecture
+
+```mermaid
+flowchart LR
+  zip["WhatsApp zip"]
+  parse["whatsapp.ts parse + date validation"]
+  windows["broad time windows"]
+  threads["contextual mini-threads"]
+  det["deterministic helper extraction"]
+  llm["optional local Ollama extraction"]
+  review["review artifacts"]
+
+  zip --> parse --> windows --> threads
+  threads --> det --> review
+  threads --> llm --> review
+```
+
+Core files:
+
+- `scripts/extract-preview.ts`
+- `src/lib/importer/contextual.ts`
+- `src/lib/importer/whatsapp.ts`
+- `src/lib/importer/whatsapp-heuristic.ts`
+- `src/lib/importer/dedupe.ts`
+- `src/lib/importer/schemas.ts`
+
+Old `window-v2` / `session-v1` importer scripts and modules have been removed as active pipeline options.
+
+## Intentionally Disabled In Public UI
+
+These remain hidden from the header/pages while flows are refined:
+
+| Feature | Still in codebase | Re-enable when |
+| --- | --- | --- |
+| Sign in / Account | Auth, magic link, `/auth/callback` | Contributor sign-in is ready for public use |
+| Add recc | `/add`, `POST /api/recommendations` | Invite/auth flow is polished |
+| Search | API/data query support | Search UX is defined |
+
+## Next Data Step
+
+Review `data/extraction-runs/contextual-full-2026-06-01/review.csv` and `candidates.json`.
+
+Before any import:
+
+1. Remove obvious false positives.
+2. Confirm whether dish-only rows should become topic tags or be dropped.
+3. Approve a clean `RecommendationInput[]` set.
+4. Only then feed approved rows into the import API.
+
+Do not run import or deploy commands until review approval:
+
+```powershell
+pnpm import:whatsapp
+vercel
+vercel --prod
+```
+
+## Secrets And Local Data
+
+No API keys belong in the repo. Use `.env.local` and Vercel env vars only.
+
+Gitignored local-only data includes raw WhatsApp zips/text, parsed chat, extraction runs, checkpoints, logs, preview JSON, review CSVs, and LLM failure logs.
+
+Required env var names are listed in `.env.example`.
+
+## Verification
+
+Use:
+
+```powershell
 pnpm test
 pnpm lint
 pnpm build
-pnpm import:scan "data/WhatsApp Chat - Dastarkhwan.zip"
-pnpm import:preview "data/WhatsApp Chat - Dastarkhwan.zip"
-pnpm import:report "data/WhatsApp Chat - Dastarkhwan.zip"
-pnpm db:seed
-pnpm resolve:locations
-pnpm enrich:places
-pnpm audit:cuisine
-pnpm invite:create --label="Community invite" --max=10
-pnpm fix:uno-parimal
-vercel --prod
 ```

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dedupeCandidates } from "./dedupe";
 import { extractRecommendationCandidates } from "./whatsapp-heuristic";
-import { parseWhatsAppText, sortMessagesChronologically } from "./whatsapp";
+import { detectWhatsAppDateOrder, parseWhatsAppText, sortMessagesChronologically } from "./whatsapp";
 
 const srinagarCluster = `[09/05/26, 2:47:22 PM] ~ Abhishek Durani: Moon Light - The Walnut Fudge Shop مون لاںٔٹ, New Shopping Complex, 4RGP+RR, Block-A, Auqaf Building, University Main Road, Hazaratbal, Srinagar, Jammu and Kashmir
 [09/05/26, 12:22:27 PM] ~ Abhishek Durani: Don’t miss going to moonlight bakery and try their Walnut fudge 😍 and everything else as well.
@@ -14,6 +14,19 @@ Need your top food reccos in Srinagar. Here for a few days for moms birthday.
 Anything from breakfast spots, bakery, restaurants or wazwan places`;
 
 describe("WhatsApp parsing and extraction", () => {
+  it("auto-detects month-first exports and rejects impossible overflow dates", () => {
+    const text = `[06/15/26, 9:00:00 AM] ~ A: Need food reccos in Bangalore
+[06/16/26, 9:05:00 AM] ~ B: Try Vidyarthi Bhavan for dosa
+[13/40/26, 9:05:00 AM] ~ C: impossible date`;
+
+    expect(detectWhatsAppDateOrder(text)).toBe("month-first");
+    const messages = parseWhatsAppText(text);
+
+    expect(messages).toHaveLength(2);
+    expect(messages[0]?.timestamp.toISOString()).toBe("2026-06-15T09:00:00.000Z");
+    expect(messages[1]?.timestamp.toISOString()).toBe("2026-06-16T09:05:00.000Z");
+  });
+
   it("parses nested transcript lines and sorts newest-first snippets chronologically", () => {
     const messages = parseWhatsAppText(srinagarCluster);
     const sorted = sortMessagesChronologically(messages);

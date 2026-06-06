@@ -1,7 +1,7 @@
 "use client";
 
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getDisplayQuote } from "@/lib/display-quote";
 import type { Recommendation } from "@/lib/types";
 
@@ -9,8 +9,12 @@ type GoogleWindow = Window & typeof globalThis & { google?: typeof google };
 
 export function CityMap({ recommendations }: { recommendations: Recommendation[] }) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapped = recommendations.filter(
-    (item) => typeof item.latitude === "number" && typeof item.longitude === "number",
+  const mapped = useMemo(
+    () =>
+      recommendations.filter(
+        (item) => typeof item.latitude === "number" && typeof item.longitude === "number",
+      ),
+    [recommendations],
   );
   const [selected, setSelected] = useState<Recommendation | null>(mapped[0] ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +76,7 @@ export function CityMap({ recommendations }: { recommendations: Recommendation[]
         {selected ? (
           <>
             <p className="rec-card-meta">
-              {selected.area || selected.city}
+              {[selected.area, selected.city].filter(Boolean).join(" / ")}
             </p>
             <h2>{selected.restaurant}</h2>
             {selected.cuisineSummary ? (

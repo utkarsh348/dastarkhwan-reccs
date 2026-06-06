@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterStrongLabels, isWeakLabel, isWeakNote, mergePlaceMetadata, needsPlaceMetadata } from "./weak-content";
+import { isWeakLabel, isWeakNote, mergePlaceMetadata, needsPlaceMetadata } from "./weak-content";
 
 describe("isWeakLabel", () => {
   it("rejects generic snacks", () => {

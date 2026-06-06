@@ -18,32 +18,29 @@ Add Supabase values to `.env.local` (see `.env.example`). The project uses:
 - `SUPABASE_SERVICE_ROLE_KEY` (imports, invite admin, location resolve)
 - `INVITE_CODE_SALT`
 
-Apply schema from `supabase/schema.sql`, then RLS from `supabase/migrations/002_auth_invites_rls.sql` in the Supabase SQL editor (or use Supabase MCP migrations).
-
-Seed preview data:
-
-```powershell
-pnpm db:seed
-```
+Apply schema from `supabase/schema.sql`, then RLS from `supabase/migrations/002_auth_invites_rls.sql` in the Supabase SQL editor (or use Supabase MCP migrations). Do not seed or import extraction output until the review artifacts have been approved.
 
 ```powershell
 pnpm dev
 ```
 
-## Import Workflow
+## Extraction Workflow
 
-Preview the WhatsApp zip:
-
-```powershell
-pnpm import:preview "C:\path\to\WhatsApp Chat - Dastarkhwan reccs.zip"
-```
-
-Import into the running local app (requires `SUPABASE_SERVICE_ROLE_KEY`):
+Preview the WhatsApp zip locally:
 
 ```powershell
-pnpm import:whatsapp "C:\path\to\WhatsApp Chat - Dastarkhwan reccs.zip"
-pnpm import:snippet
+pnpm extract:preview "data\WhatsApp Chat - Dastarkhwan.zip"
 ```
+
+This writes review artifacts only under `data/extraction-runs/<run-id>/`:
+
+- `summary.json`
+- `candidates.json`
+- `review.csv`
+- `rejected.json`
+- `clusters.json`
+
+The preview command does not write to Supabase, Google Maps, or Vercel. Review and approve candidates before feeding them into any import flow.
 
 Resolve pending geocodes:
 

@@ -10,7 +10,9 @@ export function RecommendationCard({
   showEdit?: boolean;
 }) {
   const quote = getDisplayQuote(recommendation);
+  const fallbackNote = quote ? null : recommendation.note ?? recommendation.snippet;
   const variant = quote ? "story" : "compact";
+  const location = [recommendation.area, recommendation.city].filter(Boolean).join(" / ");
 
   return (
     <article
@@ -19,20 +21,18 @@ export function RecommendationCard({
       data-card-variant={variant}
     >
       <div className="rec-card-body">
-        <p className="rec-card-meta">
-          {recommendation.city}
-          {recommendation.area ? ` · ${recommendation.area}` : ""}
-        </p>
-        <h2>{recommendation.restaurant}</h2>
-        {recommendation.cuisineSummary ? (
-          <p className="rec-cuisine">{recommendation.cuisineSummary}</p>
-        ) : null}
+        <div className="rec-card-main">
+          <p className="rec-card-meta rec-location">{location || recommendation.city}</p>
+          <h2>{recommendation.restaurant}</h2>
+          {recommendation.cuisineSummary ? <p className="rec-cuisine">{recommendation.cuisineSummary}</p> : null}
+        </div>
         {quote ? <blockquote className="rec-quote">{quote}</blockquote> : null}
+        {fallbackNote ? <p className="rec-note">{fallbackNote}</p> : null}
       </div>
 
       <div className="rec-card-footer">
         <span className="rec-source">
-          {recommendation.sourceName ? `From ${recommendation.sourceName}` : "Community recommendation"}
+          {recommendation.sourceName ? `Recommended by ${recommendation.sourceName}` : "Recommended by the community"}
         </span>
         <div className="footer-actions">
           {recommendation.googleMapsUrl ? (

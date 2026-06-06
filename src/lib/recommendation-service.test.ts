@@ -28,6 +28,7 @@ class MemoryImportStore implements ImportStore {
       locationConfidence: input.locationConfidence ?? 0,
       dishes: input.dishes ?? [],
       tags: input.tags ?? [],
+      cuisineSummary: input.cuisineSummary ?? null,
       note: input.note ?? null,
       snippet: input.snippet ?? null,
       sourceName: input.sourceName ?? null,

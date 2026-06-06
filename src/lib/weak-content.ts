@@ -72,8 +72,9 @@ export function sanitizeRecommendationContent(input: RecommendationInput): Recom
 /** @deprecated Use sanitizeRecommendationContent; kept for tests. */
 export function mergePlaceMetadata(
   input: RecommendationInput,
-  _googleLabels: string[] | null,
+  googleLabels: string[] | null,
 ): RecommendationInput {
+  void googleLabels;
   return sanitizeRecommendationContent(input);
 }
 

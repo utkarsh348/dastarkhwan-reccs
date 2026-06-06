@@ -1,33 +1,29 @@
 import type { Metadata } from "next";
-import { Amiri, Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Lora, Manrope } from "next/font/google";
 import { AppNav } from "@/components/AppNav";
+import { AppFooter } from "@/components/AppFooter";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--next-font-body",
   subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--next-font-mono",
   subsets: ["latin"],
 });
 
-const amiri = Amiri({
-  variable: "--font-display",
-  subsets: ["latin", "arabic"],
-  weight: ["400", "700"],
-});
-
-const fraunces = Fraunces({
-  variable: "--font-serif",
+const lora = Lora({
+  variable: "--next-font-heading",
   subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
   title: "Dastarkhwan Recommendations",
-  description: "City-wise food recommendations from the Dastarkhwan community.",
+  description: "Community food recommendations from people who remember the meal.",
 };
 
 export default function RootLayout({
@@ -38,11 +34,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${amiri.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${manrope.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
     >
       <body>
         <AppNav />
         {children}
+        <AppFooter />
       </body>
     </html>
   );

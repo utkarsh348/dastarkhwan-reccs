@@ -37,15 +37,26 @@ mapskey*.txt
 *maps*key*.txt
 
 # local sensitive data (WhatsApp exports, seeds, import outputs)
+/data/*.zip
 /data/**/*.zip
+/data/*.txt
 /data/**/*.txt
 /data/_chat.txt
 /data/**/*.sql
 /data/import-preview.json
+/data/import-preview*.json
 /data/import-sessions.json
 /data/import-report.json
 /data/*.preview.json
 /data/**/*.preview.json
+/data/*.log
+/data/**/*.csv
+/data/extraction-runs/
+/data/*checkpoint*.json
+/data/*classifications*.json
+/data/*labels*.json
+/data/*threads*.json
+/data/llm-failures*.json*
 
 dev-server*.log
 
@@ -58,3 +69,12 @@ next-env.d.ts
 
 .vercel
 /data/import-pipeline.log
+/data/messages.json
+/data/window-classifications.json
+/data/message-labels.json
+/data/request-seeds.json
+/data/import-threads.json
+/data/pass-a-debug.json
+/data/llm-failures.json
+/data/llm-failures.jsonl
+/data/extract-checkpoint.json

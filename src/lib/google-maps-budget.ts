@@ -33,6 +33,8 @@ export function getGoogleMapsRequestCount(): number {
 
 /** Returns false when the request was blocked (skip flag or budget exhausted). */
 export function recordGoogleMapsRequest(endpoint: GoogleMapsEndpoint): boolean {
+  void endpoint;
+
   if (isGoogleMapsSkipGeocode()) {
     logSkipGeocodeOnce();
     return false;

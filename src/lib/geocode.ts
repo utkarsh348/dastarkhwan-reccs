@@ -67,7 +67,7 @@ export async function resolveLocation(
     const placeId = extractPlaceIdFromMapsUrl(input.googleMapsUrl);
     if (placeId) {
       const cached = placeDetailsCache.get(placeId);
-      if (cached !== undefined) {
+      if (cached) {
         return {
           ...cached,
           googleMapsUrl: input.googleMapsUrl,

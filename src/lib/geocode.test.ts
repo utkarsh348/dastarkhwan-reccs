@@ -97,8 +97,8 @@ describe("resolveLocation", () => {
   });
 
   it("resolves query_place_id via Place Details", async () => {
-    const fetcher = vi.fn(async (url: string) => {
-      if (url.includes("place/details")) {
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes("place/details")) {
         return Response.json({
           result: {
             place_id: "ChIJJyTPq56P4TgRNrF6SRDXeLc",

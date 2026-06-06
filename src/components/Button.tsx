@@ -12,6 +12,15 @@ type ButtonProps = {
 
 export function Button({ href, children, variant = "primary", type = "button", disabled, onClick }: ButtonProps) {
   const className = clsx("ui-button", `ui-button-${variant}`, disabled && "ui-button-disabled");
+  const external = href?.startsWith("http");
+
+  if (href && external) {
+    return (
+      <a className={className} data-testid="button-link" href={href} rel="noreferrer" target="_blank">
+        {children}
+      </a>
+    );
+  }
 
   if (href) {
     return (

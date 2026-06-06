@@ -9,18 +9,12 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "import:preview": "tsx scripts/import-preview.ts",
-    "import:whatsapp": "tsx scripts/import-whatsapp.ts",
-    "import:snippet": "tsx scripts/import-snippet.ts",
+    "extract:preview": "tsx scripts/extract-preview.ts",
     "setup:env": "tsx scripts/setup-env.ts",
-    "db:seed": "node scripts/seed-database.mjs",
     "invite:create": "tsx scripts/invite-create.ts",
     "resolve:locations": "tsx scripts/resolve-locations.ts",
     "enrich:places": "tsx scripts/enrich-places.ts",
-    "fix:uno-parimal": "tsx scripts/fix-uno-parimal.ts",
-    "audit:cuisine": "tsx scripts/audit-cuisine-summaries.ts",
-    "import:report": "tsx scripts/import-report.ts",
-    "import:scan": "tsx scripts/import-scan.ts"
+    "audit:cuisine": "tsx scripts/audit-cuisine-summaries.ts"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

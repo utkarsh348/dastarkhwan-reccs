@@ -1,292 +1,130 @@
-# Dastarkhwan Recommendations — agent guide
+# Dastarkhwan Recommendations - Agent Guide
 
-## Project goal
+## Project Goal
 
-**Dastarkhwan Recommendations** is a community food notebook: curated place recommendations from a WhatsApp group (“Dastarkhwan”), browsable by city with maps, short editorial descriptors, and optional emotional quotes from the original messages.
+Dastarkhwan Recommendations is a community food notebook: curated place recommendations from the Dastarkhwan WhatsApp group, browsable by city with maps, short editorial descriptors, and optional quotes from the original messages.
 
-Design intent:
+- Browse-first: visitors discover cities and places without signing in.
+- Voice preserved: testimonials stay in `note` / `snippet`; factual place summaries stay in `cuisine_summary`.
+- Privacy: raw WhatsApp zips/text, parsed chat, checkpoints, extraction outputs, logs, previews, and review CSVs stay local and gitignored under `data/`.
+- Production: https://dastarkhwan-reccs.vercel.app
 
-- **Browse-first** — visitors discover cities and places without signing in.
-- **Voice preserved** — testimonials (`note` / `snippet`) stay separate from factual place lines (`cuisine_summary`, types).
-- **Privacy** — raw WhatsApp zips, chat `.txt` snippets, seed SQL, and import preview/report JSON stay **local only** (gitignored under `data/`). Only cleaned rows land in Supabase—not in the repo.
+## Next.js Note
 
-Gitignored local data patterns: `data/**/*.zip`, `data/**/*.txt`, `data/**/*.sql`, `data/import-*.json`, `data/*.preview.json`.
-- **Contributor gate (later)** — magic-link auth + invite codes before add/edit (implemented but hidden in public UI).
+This repo uses Next.js 16 with breaking changes vs older docs. Before changing routing, caching, middleware/proxy, or app structure, read the relevant guides under `node_modules/next/dist/docs/` and heed deprecation notices.
 
-**Production:** https://dastarkhwan-reccs.vercel.app  
-**Repo:** https://github.com/utkarsh348/dastarkhwan-reccs  
-**Live ops checklist:** [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
-
----
-
-## Core tech
+## Core Tech
 
 | Layer | Choice |
-|--------|--------|
-| App | **Next.js 16** App Router, React 19, TypeScript |
-| Styling | **Tailwind CSS 4**, custom CSS in `src/app/globals.css` (warm cream/terracotta palette, Amiri + Fraunces + Geist) |
-| Data | **Supabase** (Postgres, RLS, Auth magic links) |
-| Maps | **Google Maps** — Places Details/Text Search (server), Maps JS + MarkerClusterer (client) |
-| Import | Local **WhatsApp** parse (`jszip` + `_chat.txt`), optional **Ollama** JSON extraction |
-| Validation | **Zod** API schemas, **Vitest** unit tests |
-| Deploy | **Vercel** (`vercel.json`, env vars on platform) |
+| --- | --- |
+| App | Next.js 16 App Router, React 19, TypeScript |
+| Styling | Tailwind CSS 4 and custom CSS in `src/app/globals.css` |
+| Data | Supabase Postgres, RLS, Auth magic links |
+| Maps | Google Maps Places and Maps JS |
+| Extraction | Local WhatsApp zip parse plus contextual mini-thread extraction |
+| Local LLM | Ollama `qwen3:4b`, fallback `llama3.2:3b` |
+| Deploy | Vercel |
 
-**Next.js note:** This repo uses Next.js 16 with breaking changes vs older docs. Before changing routing, caching, or middleware, read guides under `node_modules/next/dist/docs/` and heed deprecation notices (e.g. middleware → proxy migration).
+## Local Extraction Pipeline
 
----
+`pnpm extract:preview "data\WhatsApp Chat - Dastarkhwan.zip"` is the main pipeline command.
 
-## How it works (end-to-end)
+It writes only local review artifacts under `data/extraction-runs/<run-id>/`:
 
-```mermaid
-flowchart LR
-  subgraph local [Local only]
-    WA[WhatsApp zip / snippet]
-    IMP[import:preview / import:whatsapp]
-    WA --> IMP
-  end
+- `summary.json`
+- `candidates.json`
+- `review.csv`
+- `rejected.json`
+- `clusters.json`
 
-  subgraph ingest [Ingestion]
-    API["POST /api/import"]
-    IMP --> API
-    API --> SB[(Supabase)]
-  end
+Default preview behavior:
 
-  subgraph enrich [Enrichment scripts]
-    GEO[resolve:locations]
-    ENR[enrich:places]
-    AUD[audit:cuisine]
-    GEO --> SB
-    ENR --> SB
-    AUD --> SB
-  end
+- No Supabase writes.
+- No Vercel deploys.
+- No Google Maps calls.
+- Raw chat stays local.
+- City context is bounded to mini-threads.
+- Unknown city is `Unsorted`.
+- Precision beats recall.
 
-  subgraph app [Next.js app]
-    HOME["/ city tiles + masonry"]
-    CITY["/city/slug list"]
-    MAP["/city/slug/map"]
-    HOME --> SB
-    CITY --> SB
-    MAP --> SB
-  end
+Relevant files:
 
-  IMP -.->|Google Places| GEO
-  ENR -.->|Places reviews/types| ENR
+- `src/lib/importer/whatsapp.ts`: WhatsApp zip/text parsing, date auto-detection, impossible-date rejection, chronological ordering.
+- `src/lib/importer/contextual.ts`: canonical contextual extractor, mini-thread segmentation, deterministic extraction, Ollama extraction, checkpoints, review artifacts.
+- `src/lib/importer/whatsapp-heuristic.ts`: deterministic helper only.
+- `src/lib/importer/dedupe.ts`: deterministic dedupe helper.
+- `scripts/extract-preview.ts`: local-only preview command.
+- `src/lib/importer/schemas.ts`: lightweight candidate shape used by helpers.
+
+Do not reintroduce `window-v2`, `session-v1`, rolling window classification, or direct import scripts as active extraction paths unless the user explicitly asks.
+
+## Import Boundary
+
+`POST /api/import` and the Supabase schema remain for eventual approved `RecommendationInput[]` payloads. The preview pipeline stops at review files. Only after human review should approved candidates be fed into import code.
+
+Do not run these while working on local extraction preview:
+
+```powershell
+pnpm import:whatsapp
+vercel
+vercel --prod
 ```
 
-### Data model (Supabase)
+## Google Maps
 
-Main table: `recommendations`
+Maps/geocode/enrichment are separate from extraction. Use them only when explicitly requested after review approval.
 
-- **Identity:** `restaurant`, `restaurant_slug`, `city`, `city_slug`
-- **Location:** `latitude`, `longitude`, `google_place_id`, `google_maps_url`, `location_status`, `location_confidence`
-- **Editorial:** `dishes[]`, `tags[]`, `cuisine_summary` (short “Known for …” / type line — **not** a testimonial)
-- **Voice:** `note`, `snippet`, `source_name`, `confidence`
-- **Provenance:** `recommendation_sources` (hash dedupe), `import_batches`
+- `src/lib/geocode.ts`: Places text search and details.
+- `src/lib/enrich-location.ts`: resolves place/location on create/update.
+- `src/lib/place-metadata.ts`: Google place types/reviews.
+- `src/lib/google-maps-budget.ts`: request caps.
+- `pnpm resolve:locations`, `pnpm enrich:places`, `pnpm audit:cuisine`: explicit post-import/admin scripts.
 
-RLS: public **read** on recommendations; **writes** require authenticated contributor (see `supabase/migrations/002_auth_invites_rls.sql`).
-
-### Browse UI (what ships today)
+## App Surfaces
 
 | Route | Behavior |
-|-------|----------|
-| `/` | Hero “From Dastarkhwan: tried and tasted”, city tiles, recent recommendations (masonry) |
-| `/city/[citySlug]` | City list, List/Map tabs |
-| `/city/[citySlug]/map` | `CityMap` + clustered pins |
-| `/recommendation/[id]` | Detail card; edit UI only for contributors |
+| --- | --- |
+| `/` | City tiles and recent recommendations |
+| `/city/[citySlug]` | City recommendation list |
+| `/city/[citySlug]/map` | Clustered city map |
+| `/recommendation/[id]` | Detail view; edit UI for contributors |
+| `/login`, `/join`, `/add` | Contributor flows, currently hidden from public nav |
 
-**`RecommendationCard`:**
+Keep browse surfaces clean: no dish/tag chips on cards unless the product direction changes.
 
-- **Compact** — no quote; shows `cuisine_summary` only
-- **Story** — blockquote via `getDisplayQuote()` (emotional filter in `src/lib/display-quote.ts`)
-- No dish/tag chips on browse surfaces
+## Secrets
 
-**`AppNav`:** brand logo only (peacock quill PNG). No Cities / Sign in / Add recc / Search.
+Never commit API keys. Use `.env.local` and Vercel env vars only. `.env.example` should list variable names without secrets.
 
-### Import pipeline (session-anchored LLM)
+Never commit:
 
-1. **`src/lib/importer/whatsapp.ts`** — parse `_chat.txt` from zip
-2. **`src/lib/importer/session-detect.ts`** — scan + Ollama confirm recc-request threads → `ReccSession`
-3. **`src/lib/importer/session-extract.ts`** — one Ollama call per session; multi-venue split in prompt
-4. **`src/lib/importer/pipeline.ts`** — orchestrate detect → extract → dedupe
-5. **`scripts/import-common.ts`** — candidates → preview JSON; optional geocode for locked rows; `pnpm import:preview`, `pnpm import:report`
-6. **`POST /api/import`** — `importRecommendations()` with `source_hash` merge; geocode at persist via `createRecommendation` → `enrichWithLocation`
-7. **`src/lib/weak-content.ts`** — strip weak dishes/tags/notes at enrich time
-8. **`src/lib/google-maps-budget.ts`** — per-run request cap for import + bulk scripts (`GOOGLE_MAPS_MAX_REQUESTS`, default 500)
-9. **`src/lib/importer/locked-recommendation.ts`** — `isLockedRecommendation()` gates preview/report geocoding
-
-Requires local Ollama (`IMPORT_USE_OLLAMA=true`). Legacy regex extractor: `whatsapp-heuristic.ts` (tests only).
-
-#### Google Maps API budget (collaborators)
-
-Google Cloud free tiers are **per SKU**, not one pooled quota:
-
-| SKU (typical import usage) | Approx. free tier / month |
-|----------------------------|---------------------------|
-| Places Text Search (Pro)   | ~5,000 requests           |
-| Place Details (Essentials) | ~10,000 requests          |
-
-Each unresolved row can cost up to **3 Text Search** calls plus **1 Details** (geometry or metadata). Re-running preview + report + import without caching can burn quota fast.
-
-**Env & flags**
-
-| Control | Effect |
-|---------|--------|
-| `GOOGLE_MAPS_MAX_REQUESTS` | Hard cap per script run (default 500). Shared by import scripts, `resolve:locations`, `enrich:places`. |
-| `IMPORT_GEOCODE_MAX` | Alias for `GOOGLE_MAPS_MAX_REQUESTS`. |
-| `IMPORT_SKIP_GEOCODE=true` | Blocks all Maps calls (same as `--no-geocode`). |
-| `--geocode` | Opt-in geocoding during `import:preview` / `import:report` (locked rows only, budget-capped). |
-| `--no-geocode` | Explicit skip; sets `IMPORT_SKIP_GEOCODE` for the run. |
-| `--from-preview` | `import:report` reads `data/import-preview.json` — no Ollama, no re-text-search for rows that already have `googlePlaceId`. |
-
-**Recommended workflow**
-
-1. `pnpm import:preview "chat.zip"` — Ollama extract only; **no Maps by default**.
-2. Review `data/import-preview.json` (gitignored).
-3. Gap check: `pnpm import:report --from-preview` — Place Details metadata only for rows already geocoded; add `--geocode` to resolve locked rows missing `googlePlaceId`.
-4. Persist: `pnpm import:whatsapp "chat.zip"` — geocodes at import time via `enrichWithLocation` (locked moment).
-5. Optional: `pnpm import:preview "chat.zip" --geocode` if you want place IDs before import (still capped).
-
-**Caching:** `geocode.ts` caches Text Search and Details (geometry) per process run; `place-metadata.ts` caches Details (types/reviews). Never commit API keys; preview/report JSON stays local under `data/`.
-
-**Legacy note:** `resolveLocation` uses Places Text Search (up to 3 queries per row) and sometimes Place Details (geometry). `import:report` adds Place Details (types/reviews) via `fetchPlaceMetadata`. Scripts log `Google Maps API calls used: N / limit` at exit.
-
-### Location & place metadata
-
-- **`src/lib/geocode.ts`** — Places text search + details; score by name/city; `query_place_id` URL support; budget via `google-maps-budget.ts`
-- **`src/lib/enrich-location.ts`** — on create/update: resolve + `buildCuisineSummary()`
-- **`src/lib/place-metadata.ts`** — Google types, reviews, editorial → `formatCuisineSummary()`
-- **`src/lib/cuisine-summary.ts`** — **validate** summaries (reject testimonial phrasing, weak generics); `pnpm audit:cuisine` backfills DB
-
-### Auth & contributors (implemented, UI hidden)
-
-- Supabase magic link: `/login` → `/auth/callback`
-- Invite codes (hashed with `INVITE_CODE_SALT`): `/join`, `pnpm invite:create`
-- Middleware guards `/add`; API uses `requireContributorSession`
-- Docs: [`docs/SUPABASE_AUTH_SETUP.md`](docs/SUPABASE_AUTH_SETUP.md)
-
----
-
-## Key files (where to edit)
-
-| Area | Paths |
-|------|--------|
-| Pages | `src/app/page.tsx`, `src/app/city/[citySlug]/**`, `src/app/recommendation/[id]/page.tsx` |
-| Cards / map | `src/components/RecommendationCard.tsx`, `CityMap.tsx`, `CityTile.tsx` |
-| Data access | `src/lib/recommendations.ts`, `src/lib/public-data.ts` |
-| Types | `src/lib/types.ts`, `src/lib/api-schemas.ts` |
-| Import | `src/lib/importer/*`, `scripts/import-*.ts` |
-| Cuisine QA | `src/lib/cuisine-summary.ts`, `scripts/audit-cuisine-summaries.ts` |
-| Schema | `supabase/schema.sql`, `supabase/migrations/*.sql` |
-| Env | `src/lib/env.ts`, `.env.example` (never commit `.env.local`) |
-
----
-
-## Intentionally disabled (public UI)
-
-Code remains; restore by re-adding nav/components — see [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
-
-| Feature | Routes / code still present |
-|---------|----------------------------|
-| Sign in | `/login`, `AuthForm`, Supabase SSR |
-| Add recommendation | `/add`, `RecommendationForm`, middleware |
-| Search | `listRecommendations({ q })`, API — `SearchBox.tsx` deleted; re-add to home/city pages |
-| Cities nav link | Removed from `AppNav`; brand links home |
-
-Do not re-enable without product sign-off.
-
----
-
-## Secrets & environment
-
-- **Never commit API keys.** Use `.env.local` (gitignored) and Vercel env vars.
-- **`.env.example`** — variable names only, empty secrets.
-- **Never add** `mapskey*.txt` or paste keys into SQL, seed chat logs, or docs.
-- Required vars: `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_MAPS_*`, `INVITE_CODE_SALT`, `IMPORT_TOKEN`
-
-`pnpm setup:env` only writes non-secret defaults (`NEXT_PUBLIC_APP_URL`, placeholder `IMPORT_TOKEN`).
-
----
+- `.env`, `.env*.local`
+- `mapskey*.txt`
+- raw WhatsApp exports
+- extracted or parsed chat data
+- extraction runs/checkpoints/logs/review CSVs
 
 ## Commands
 
 ```powershell
 pnpm install
-pnpm dev          # local app (needs .env.local)
+pnpm dev
+pnpm extract:preview "data\WhatsApp Chat - Dastarkhwan.zip"
 pnpm test
 pnpm lint
 pnpm build
-pnpm db:seed
-pnpm import:preview "path\to\chat.zip"              # optional: --geocode, --no-geocode
-pnpm import:report "path\to\chat.zip"                 # optional: --from-preview, --geocode, --no-geocode
-pnpm import:whatsapp "path\to\chat.zip"
 pnpm resolve:locations
 pnpm enrich:places
 pnpm audit:cuisine
 pnpm invite:create --label="Community invite" --max=10
-vercel --prod
 ```
 
----
+## Agent Conventions
 
-## Agent conventions
-
-1. **Minimize scope** — match existing patterns; no new UI libraries or features unless asked.
-2. **Separate testimonial vs descriptor** — quotes in `note`/`snippet` + `display-quote.ts`; place lines in `cuisine_summary` via `cuisine-summary.ts` validation.
-3. **Multi-place messages** — use `multi-place.ts` / extend gating; one row per restaurant.
-4. **No chips on browse** — keep masonry cards clean (`RecommendationCard`, `CityMap`).
-5. **Read `PROJECT_STATUS.md`** before deploy/ops tasks.
-6. **Next.js 16** — consult in-repo docs before assuming App Router APIs from training data.
-
----
-
-## Cleanup & tech-debt backlog
-
-Prioritized work that is **not** done or only partially done. Use this when planning refactors; update this section when items close.
-
-### P0 — Product / data quality
-
-- [ ] **Re-enable contributor UI** — `AppNav` links for Sign in + Add recc; polish `/add` and onboarding copy.
-- [ ] **Import pipeline hardening** — multi-place gating on all message shapes; Ollama prompt = one restaurant per object; run `audit:cuisine` after every bulk import.
-- [ ] **Cuisine summary gaps** — several rows have `null` `cuisine_summary` after audit (Araby's, Curries, Moi, etc.); manual dish tags or better Google type fallbacks.
-- [ ] **Map coverage** — resolve **Lolo Roso** (`needs_lookup`); verify Parimal Garden, SG Road Food Truck Park pins.
-
-### P1 — UX (disabled features)
-
-- [ ] **Search** — restore `SearchBox` on `/` and `/city/[citySlug]`; define search scope (name vs note vs city).
-- [ ] **README / routes doc** — README still mentions search and nav features that are disabled; keep in sync with UI.
-
-### P2 — Platform / ops
-
-- [ ] **Supabase Auth redirect URLs** — confirm production/preview URLs in dashboard ([`docs/SUPABASE_AUTH_SETUP.md`](docs/SUPABASE_AUTH_SETUP.md)).
-- [ ] **Rotate `IMPORT_TOKEN`** on Vercel if still default from `.env.example`.
-- [ ] **`SUPABASE_SERVICE_ROLE_KEY` on Vercel Preview** — if using preview deployments.
-- [ ] **Next.js middleware deprecation** — migrate `src/middleware.ts` to proxy convention when upgrading.
-
-### P3 — Code health
-
-- [ ] **Remove dead CSS** — `.nav-links` rules if nav stays logo-only; old search styles already removed.
-- [ ] **Lint warnings** — unused vars in `weak-content.ts` / `weak-content.test.ts`.
-- [ ] **Windows dev stability** — `next.config.ts` uses `experimental.cpus: 1`; document OOM workaround (`pnpm build` + `pnpm start`).
-- [ ] **Consolidate seed paths** — `data/seed.sql`, `seed-part-*.sql`, `seed-database.mjs`, `import-preview.json` (gitignored) — document single source of truth.
-- [ ] **Favicon / logo** — optional transparent PNG for circular `brand-mark`; replace default `favicon.ico`.
-
-### P4 — Future architecture
-
-- [ ] **Wire `buildCuisineSummary()` everywhere** — import and enrich always validate; no testimonial “Known for” in DB.
-- [ ] **Editorial pass** — weak list-only snippets (e.g. “1. Gordhan Thal”) vs story cards.
-- [ ] **Duplicate / typo rows** — Gordon Thal vs Gordhan Thal merge policy.
-- [ ] **Rate-limit & monitor** Google Places usage on enrich/resolve scripts.
-
----
-
-## Related docs
-
-- [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — live deploy state, disabled features table, ops
-- [`README.md`](README.md) — human setup (may lag UI; prefer this file for agents)
-- [`docs/SUPABASE_AUTH_SETUP.md`](docs/SUPABASE_AUTH_SETUP.md) — auth redirect checklist
-
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+1. Match existing patterns; avoid new abstractions unless the current task needs them.
+2. Keep extraction local and review-first.
+3. Preserve provenance: sender, timestamp, source snippet, line refs, and thread id.
+4. Put cuisines/topics in `tags`; put specific foods in `dishes`.
+5. Reject event/admin/name-list chatter, recipes, generic food opinions, and request-only messages.
+6. Use `Unsorted` when city is genuinely unclear.
+7. Read `PROJECT_STATUS.md` before deploy/ops tasks.

@@ -7,21 +7,21 @@ const base = {
   note: "Try the wazwan thali",
   snippet: "Ahdoos is great for wazwan",
   sourceName: "Gokul",
-  sessionId: "sess-1",
+  threadId: "thread-1",
   confidence: 0.8,
 };
 
 describe("isLockedRecommendation", () => {
-  it("accepts a complete session-backed candidate", () => {
+  it("accepts a complete thread-backed candidate", () => {
     expect(isLockedRecommendation(base)).toBe(true);
   });
 
-  it("accepts session id parsed from rawRefLabel", () => {
+  it("accepts provenance parsed from rawRefLabel", () => {
     expect(
       isLockedRecommendation({
         ...base,
-        sessionId: undefined,
-        rawRefLabel: "session abc-42 lines 10-12",
+        threadId: undefined,
+        rawRefLabel: "thread abc-42 lines 10-12",
       }),
     ).toBe(true);
   });
@@ -36,9 +36,9 @@ describe("isLockedRecommendation", () => {
     expect(isLockedRecommendation({ ...base, note: null, snippet: "  " })).toBe(false);
   });
 
-  it("rejects rows missing sourceName or session", () => {
+  it("rejects rows missing sourceName or provenance", () => {
     expect(isLockedRecommendation({ ...base, sourceName: "" })).toBe(false);
-    expect(isLockedRecommendation({ ...base, sessionId: undefined, rawRefLabel: null })).toBe(
+    expect(isLockedRecommendation({ ...base, threadId: undefined, rawRefLabel: null })).toBe(
       false,
     );
   });
