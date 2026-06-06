@@ -1,4 +1,4 @@
-import { recordGoogleMapsRequest } from "./google-maps-budget";
+﻿import { recordGoogleMapsRequest } from "./google-maps-budget";
 
 export type PlaceReview = {
   text: string;
@@ -6,6 +6,11 @@ export type PlaceReview = {
 };
 
 export type PlaceMetadata = {
+  name?: string | null;
+  formattedAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string | null;
   types: string[];
   editorialOverview: string | null;
   reviews: PlaceReview[];
@@ -71,7 +76,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const FOOD_KEYWORDS =
-  /\b(thali|samosa|chaat|dosa|biryani|wazwan|kashmiri|gujarati|pizza|burger|pasta|curry|curries|chai|coffee|bakery|farsan|snacks|street food|walnut fudge|kulfi|lassi|kebab|paratha|pav bhaji|vada pav|misal|pani puri|bhel|ice cream|dessert|seafood|sushi|tacos|ramen|noodles|beverages|mocktails)\b/gi;
+  /\b(thali|samosa|chaat|dosa|biryani|wazwan|kashmiri|gujarati|pizza|burger|pasta|curry|curries|chai|coffee|bakery|cake|cakes|pastry|pastries|farsan|snacks|street food|walnut fudge|kulfi|lassi|kebab|kebabs|paratha|pav bhaji|vada pav|misal|pani puri|bhel|ice cream|dessert|seafood|sushi|tacos|ramen|noodles|kimchi|gimbap|steak|cocktails|wine|beverages|mocktails)\b/gi;
 
 const MAX_SUMMARY_LENGTH = 72;
 
@@ -99,10 +104,14 @@ export async function fetchPlaceMetadata(
   const fetcher = options.fetcher ?? fetch;
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
     placeId,
-  )}&fields=types,editorial_summary,reviews&key=${encodeURIComponent(options.apiKey)}`;
+  )}&fields=place_id,name,formatted_address,geometry,types,editorial_summary,reviews&key=${encodeURIComponent(options.apiKey)}`;
   const response = await fetcher(url);
   const data = (await response.json()) as {
     result?: {
+      name?: string;
+      formatted_address?: string;
+      place_id?: string;
+      geometry?: { location?: { lat?: number; lng?: number } };
       types?: string[];
       editorial_summary?: { overview?: string };
       reviews?: Array<{ text?: string; rating?: number }>;
@@ -116,6 +125,11 @@ export async function fetchPlaceMetadata(
   }
 
   const metadata: PlaceMetadata = {
+    name: data.result.name ?? null,
+    formattedAddress: data.result.formatted_address ?? null,
+    latitude: data.result.geometry?.location?.lat ?? null,
+    longitude: data.result.geometry?.location?.lng ?? null,
+    placeId: data.result.place_id ?? placeId,
     types: data.result.types ?? [],
     editorialOverview: data.result.editorial_summary?.overview?.trim() ?? null,
     reviews: (data.result.reviews ?? [])

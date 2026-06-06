@@ -14,6 +14,7 @@
     "invite:create": "tsx scripts/invite-create.ts",
     "resolve:locations": "tsx scripts/resolve-locations.ts",
     "enrich:places": "tsx scripts/enrich-places.ts",
+    "audit:places": "tsx scripts/audit-place-data.ts",
     "audit:cuisine": "tsx scripts/audit-cuisine-summaries.ts"
   },
   "dependencies": {

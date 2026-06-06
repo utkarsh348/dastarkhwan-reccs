@@ -52,6 +52,7 @@ mapskey*.txt
 /data/*.log
 /data/**/*.csv
 /data/extraction-runs/
+/data/location-audits/
 /data/*checkpoint*.json
 /data/*classifications*.json
 /data/*labels*.json

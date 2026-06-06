@@ -1,4 +1,4 @@
-import {
+﻿import {
   derivePlaceLabels,
   formatCuisineSummary,
   type PlaceMetadata,
@@ -21,6 +21,9 @@ const GENERIC_FAMOUS_TERMS = new Set([
 const TESTIMONIAL_SIGNALS =
   /\b(I|I've|I'm|I'd|Ill|my|we|our|me|you|your|they|their|this place|that place|please go|must try|love|loved|awesome|amazing|recommend|vibey|kickass|had in|I've had|i've had|when I|used to|thank you|definitely try|don't miss|do not miss|sounds cliched|more of a hangout)\b/i;
 
+const REQUEST_CONTEXT_SIGNALS =
+  /\b(recommendations?|reccos?|recos?|looking for|around|near|lunch|dinner|breakfast|friends visiting|with friends|date night|price no bar|open to any|outdoor seating|places?\s+(?:for|to|with)|excellent lunch|cake around|bakery\/cake|vegetarian food places|ambience\s+\+?\s*good food)\b/i;
+
 export function isTestimonialLikeCuisineSummary(summary: string | null | undefined): boolean {
   if (!summary?.trim()) return false;
 
@@ -38,11 +41,21 @@ export function isTestimonialLikeCuisineSummary(summary: string | null | undefin
   return false;
 }
 
+export function isRequestContextCuisineSummary(summary: string | null | undefined): boolean {
+  if (!summary?.trim()) return false;
+
+  const text = summary.trim();
+  if (/^Known for\b/i.test(text)) return false;
+
+  const parts = splitSummaryParts(text);
+  if (parts.length > 1 && parts.every((part) => part.split(/\s+/).length <= 3)) return false;
+  return REQUEST_CONTEXT_SIGNALS.test(text);
+}
+
 export function isWeakGenericCuisineSummary(summary: string | null | undefined): boolean {
   if (!summary?.trim()) return false;
 
-  const parts = summary
-    .split("·")
+  const parts = splitSummaryParts(summary)
     .map((part) => part.replace(/^Known for\s+/i, "").trim().toLowerCase())
     .filter(Boolean);
 
@@ -59,6 +72,7 @@ export function isWeakGenericCuisineSummary(summary: string | null | undefined):
 export function isValidCuisineSummary(summary: string | null | undefined): boolean {
   if (!summary?.trim()) return false;
   if (isTestimonialLikeCuisineSummary(summary)) return false;
+  if (isRequestContextCuisineSummary(summary)) return false;
   if (isWeakGenericCuisineSummary(summary)) return false;
   return true;
 }
@@ -101,8 +115,8 @@ export function typesOnlyCuisineSummary(metadata: PlaceMetadata): string | null 
 
 export function buildCuisineSummary(metadata: PlaceMetadata): string | null {
   const candidates = [
-    typesOnlyCuisineSummary(metadata),
     formatCuisineSummary(metadata),
+    typesOnlyCuisineSummary(metadata),
   ]
     .filter((value): value is string => Boolean(value?.trim()))
     .map((value) => dedupeSummaryParts(value));
@@ -115,7 +129,7 @@ export function buildCuisineSummary(metadata: PlaceMetadata): string | null {
 }
 
 function dedupeSummaryParts(summary: string) {
-  const parts = summary.split("·").map((part) => part.trim()).filter(Boolean);
+  const parts = splitSummaryParts(summary).map((part) => part.trim()).filter(Boolean);
   const seen = new Set<string>();
   const unique: string[] = [];
 
@@ -151,7 +165,7 @@ export function repairCuisineSummary(
 }
 
 export type CuisineSummaryIssue = {
-  code: "testimonial" | "weak_generic" | "overlaps_note" | "missing";
+  code: "testimonial" | "request_context" | "weak_generic" | "overlaps_note" | "missing";
   message: string;
 };
 
@@ -171,6 +185,9 @@ export function auditCuisineSummary(input: {
   if (isTestimonialLikeCuisineSummary(cuisineSummary)) {
     issues.push({ code: "testimonial", message: "Reads like a review quote, not a place descriptor" });
   }
+  if (isRequestContextCuisineSummary(cuisineSummary)) {
+    issues.push({ code: "request_context", message: "Reads like request context, not a place descriptor" });
+  }
   if (isWeakGenericCuisineSummary(cuisineSummary)) {
     issues.push({ code: "weak_generic", message: "Too generic to be useful" });
   }
@@ -179,4 +196,8 @@ export function auditCuisineSummary(input: {
   }
 
   return issues;
+}
+
+function splitSummaryParts(summary: string) {
+  return summary.split(/\s*(?:·|\u00c2·)\s*/).map((part) => part.trim()).filter(Boolean);
 }

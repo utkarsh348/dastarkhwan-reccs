@@ -10,7 +10,6 @@ export function RecommendationCard({
   showEdit?: boolean;
 }) {
   const quote = getDisplayQuote(recommendation);
-  const fallbackNote = quote ? null : recommendation.note ?? recommendation.snippet;
   const variant = quote ? "story" : "compact";
   const location = [recommendation.area, recommendation.city].filter(Boolean).join(" / ");
 
@@ -27,7 +26,6 @@ export function RecommendationCard({
           {recommendation.cuisineSummary ? <p className="rec-cuisine">{recommendation.cuisineSummary}</p> : null}
         </div>
         {quote ? <blockquote className="rec-quote">{quote}</blockquote> : null}
-        {fallbackNote ? <p className="rec-note">{fallbackNote}</p> : null}
       </div>
 
       <div className="rec-card-footer">

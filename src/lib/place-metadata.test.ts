@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   derivePlaceLabels,
   extractFamousForFromReviews,
@@ -87,5 +87,17 @@ describe("formatCuisineSummary", () => {
         reviews: [{ text: "Best street snacks and dhokla.", rating: 5 }],
       }),
     ).toBe("Known for street snacks and dhokla");
+  });
+
+  it("does not emit mojibake separators or ellipses", () => {
+    const summary = formatCuisineSummary({
+      types: ["bakery", "cafe"],
+      editorialOverview:
+        "A bakery serving cakes, pastries, coffee and several other desserts for neighbourhood regulars.",
+      reviews: [],
+    });
+
+    expect(summary).toContain("·");
+    expect(summary).not.toMatch(/Â|â/);
   });
 });
