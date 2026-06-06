@@ -10,7 +10,7 @@ export default async function Home() {
       <section className="home-hero">
         <div className="hero-copy-wrap">
           <h1 className="detail-title">The Dastarkhwan notebook</h1>
-          <p className="hero-copy">Where we take our loved ones and ...break bread together</p>
+          <p className="hero-copy">Where we take our loved ones and break bread together</p>
         </div>
       </section>
 

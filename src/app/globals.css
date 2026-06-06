@@ -338,14 +338,17 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
-.city-grid,
 .rec-grid {
   display: grid;
   gap: var(--space-3);
 }
 
 .city-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  align-items: stretch;
 }
 
 .rec-grid {
@@ -357,8 +360,12 @@ textarea:focus-visible {
 .city-tile {
   position: relative;
   display: grid;
+  flex: 0 1 calc((100% - (2 * var(--space-3))) / 3);
+  min-width: min(100%, 340px);
   min-height: 164px;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-1);
   overflow: hidden;
   padding: var(--space-3);
   border: 1px solid var(--border);
@@ -404,6 +411,7 @@ textarea:focus-visible {
   display: grid;
   width: 100%;
   place-items: center;
+  min-height: calc(3.35rem * 1.08);
 }
 
 .city-tile-count,
@@ -418,9 +426,6 @@ textarea:focus-visible {
 }
 
 .city-tile-count {
-  position: absolute;
-  inset-inline: var(--space-3);
-  bottom: var(--space-3);
   text-align: center;
   font-size: 1rem;
 }
@@ -739,8 +744,8 @@ textarea:focus-visible {
 }
 
 @media (max-width: 1024px) {
-  .city-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .city-tile {
+    flex-basis: calc((100% - var(--space-3)) / 2);
   }
 }
 
@@ -766,8 +771,9 @@ textarea:focus-visible {
     padding-block: var(--space-3);
   }
 
-  .city-grid {
-    grid-template-columns: 1fr;
+  .city-tile {
+    flex-basis: 100%;
+    max-width: none;
   }
 
   .rec-grid {
