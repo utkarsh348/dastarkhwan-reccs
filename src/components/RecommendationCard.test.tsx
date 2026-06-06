@@ -64,4 +64,28 @@ describe("RecommendationCard", () => {
     expect(html).not.toContain("Chatterjee");
     expect(html).not.toContain("Sethi");
   });
+
+  it("renders location metadata by default", () => {
+    const html = renderToStaticMarkup(
+      <RecommendationCard recommendation={{ ...baseRecommendation, area: "Navrangpura" }} showEdit={false} />,
+    );
+
+    expect(html).toContain("Navrangpura / Ahmedabad");
+  });
+
+  it("can hide location metadata on city pages", () => {
+    const html = renderToStaticMarkup(
+      <RecommendationCard
+        recommendation={{ ...baseRecommendation, area: "Navrangpura", cuisineSummary: "Indian · Known for thali" }}
+        showEdit={false}
+        showLocationMeta={false}
+      />,
+    );
+
+    expect(html).not.toContain("Navrangpura");
+    expect(html).not.toContain("Ahmedabad");
+    expect(html).toContain("<h2>Curries</h2>");
+    expect(html).toContain("Indian · Known for thali");
+    expect(html).toContain("Recommended by Aileen");
+  });
 });

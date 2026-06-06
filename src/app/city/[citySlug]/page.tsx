@@ -29,7 +29,7 @@ export default async function CityPage({ params }: CityPageProps) {
       {data.recommendations.length ? (
         <section className="rec-grid">
           {data.recommendations.map((recommendation) => (
-            <RecommendationCard key={recommendation.id} recommendation={recommendation} />
+            <RecommendationCard key={recommendation.id} recommendation={recommendation} showLocationMeta={false} />
           ))}
         </section>
       ) : (

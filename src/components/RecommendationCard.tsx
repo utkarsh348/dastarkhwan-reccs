@@ -6,9 +6,11 @@ import type { Recommendation } from "@/lib/types";
 export function RecommendationCard({
   recommendation,
   showEdit = true,
+  showLocationMeta = true,
 }: {
   recommendation: Recommendation;
   showEdit?: boolean;
+  showLocationMeta?: boolean;
 }) {
   const quote = getDisplayQuote(recommendation);
   const variant = quote ? "story" : "compact";
@@ -23,7 +25,7 @@ export function RecommendationCard({
     >
       <div className="rec-card-body">
         <div className="rec-card-main">
-          <p className="rec-card-meta rec-location">{location || recommendation.city}</p>
+          {showLocationMeta ? <p className="rec-card-meta rec-location">{location || recommendation.city}</p> : null}
           <h2>{recommendation.restaurant}</h2>
           {recommendation.cuisineSummary ? <p className="rec-cuisine">{recommendation.cuisineSummary}</p> : null}
         </div>
