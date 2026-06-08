@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Lora, Manrope } from "next/font/google";
+import { Geist_Mono, Lora, Manrope, Pinyon_Script } from "next/font/google";
 import { AppNav } from "@/components/AppNav";
 import { AppFooter } from "@/components/AppFooter";
 import "./globals.css";
@@ -21,6 +21,12 @@ const lora = Lora({
   style: ["normal", "italic"],
 });
 
+const pinyonScript = Pinyon_Script({
+  variable: "--next-font-script",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 export const metadata: Metadata = {
   title: "The Dastarkhwan Diaries",
   description: "Community food recommendations from people who remember the meal.",
@@ -38,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${manrope.variable} ${geistMono.variable} ${lora.variable} ${pinyonScript.variable} h-full antialiased`}
     >
       <body>
         <AppNav />

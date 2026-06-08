@@ -36,6 +36,7 @@
   --font-mono: var(--next-font-mono), ui-monospace, monospace;
   --font-serif: var(--next-font-heading), Georgia, serif;
   --font-display: var(--next-font-heading), Georgia, serif;
+  --font-script: var(--next-font-script), var(--next-font-heading), Georgia, serif;
 }
 
 * {
@@ -208,10 +209,13 @@ textarea:focus-visible {
 }
 
 .home-hero .detail-title {
-  max-width: 900px;
+  max-width: 980px;
   margin-inline: auto;
-  font-size: clamp(3.1rem, 8vw, 6rem);
-  line-height: 1.02;
+  font-family: var(--font-script);
+  font-size: clamp(4rem, 10vw, 7.4rem);
+  font-weight: 400;
+  line-height: 0.9;
+  text-wrap: balance;
 }
 
 .home-hero .hero-copy {
