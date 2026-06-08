@@ -22,7 +22,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Dastarkhwan Recommendations",
+  title: "The Dastarkhwan Diaries",
   description: "Community food recommendations from people who remember the meal.",
   icons: {
     icon: [{ url: "/brand-peacock-icon.png", type: "image/png" }],

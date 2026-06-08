@@ -9,8 +9,8 @@ export default async function Home() {
     <main className="page-shell home-page-shell" data-testid="home-page">
       <section className="home-hero">
         <div className="hero-copy-wrap">
-          <h1 className="detail-title">The Dastarkhwan notebook</h1>
-          <p className="hero-copy">Where we take our loved ones and break bread together</p>
+          <h1 className="detail-title">The Dastarkhwan Diaries</h1>
+          <p className="hero-copy">been and loved, tried and tasted by dastarkhwan</p>
         </div>
       </section>
 
